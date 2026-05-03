@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NIDA — Font Seçimi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Nunito:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&family=Geist:wght@400;500;600;700;800&family=Lexend+Deca:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;500&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0F1923;
+    color: #E2E8F0;
+    min-height: 100vh;
+    padding: 32px 24px;
+  }
+
+  h1 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: #4ECDC4;
+    margin-bottom: 28px;
+    text-align: center;
+    letter-spacing: -0.02em;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+    gap: 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 24px;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    position: relative;
+  }
+  .card:hover {
+    border-color: rgba(78,205,196,0.5);
+    box-shadow: 0 0 24px rgba(78,205,196,0.1);
+  }
+
+  .badge {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: rgba(78,205,196,0.12);
+    color: #4ECDC4;
+    border: 1px solid rgba(78,205,196,0.25);
+  }
+
+  .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(226,232,240,0.35);
+    margin-bottom: 14px;
+  }
+
+  .sep {
+    height: 1px;
+    background: rgba(255,255,255,0.07);
+    margin: 16px 0;
+  }
+
+  /* ── Font 1: Inter + Space Grotesk ── */
+  .f1-h { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 22px; color: #fff; letter-spacing: -0.03em; }
+  .f1-sub { font-family: 'Space Grotesk', sans-serif; font-weight: 500; font-size: 13px; color: rgba(226,232,240,0.5); margin-top: 4px; }
+  .f1-body { font-family: 'Inter', sans-serif; font-weight: 400; font-size: 13.5px; color: rgba(226,232,240,0.75); line-height: 1.6; margin-top: 10px; }
+  .f1-btn { font-family: 'Inter', sans-serif; font-weight: 600; font-size: 13px; }
+  .f1-stat { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 26px; }
+  .f1-mono { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+
+  /* ── Font 2: Plus Jakarta Sans + Clash Display (Outfit ilə simulasiya) ── */
+  .f2-h { font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 24px; color: #fff; letter-spacing: -0.04em; }
+  .f2-sub { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 500; font-size: 13px; color: rgba(226,232,240,0.5); margin-top: 4px; }
+  .f2-body { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 400; font-size: 13.5px; color: rgba(226,232,240,0.75); line-height: 1.6; margin-top: 10px; }
+  .f2-btn { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 13px; }
+  .f2-stat { font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 26px; }
+  .f2-mono { font-family: 'Fira Code', monospace; font-size: 11px; }
+
+  /* ── Font 3: Nunito + Poppins ── */
+  .f3-h { font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 22px; color: #fff; letter-spacing: -0.02em; }
+  .f3-sub { font-family: 'Poppins', sans-serif; font-weight: 400; font-size: 13px; color: rgba(226,232,240,0.5); margin-top: 4px; }
+  .f3-body { font-family: 'Nunito', sans-serif; font-weight: 400; font-size: 14px; color: rgba(226,232,240,0.75); line-height: 1.65; margin-top: 10px; }
+  .f3-btn { font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 13.5px; }
+  .f3-stat { font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 26px; }
+  .f3-mono { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+
+  /* ── Font 4: Geist ── */
+  .f4-h { font-family: 'Geist', sans-serif; font-weight: 700; font-size: 22px; color: #fff; letter-spacing: -0.04em; }
+  .f4-sub { font-family: 'Geist', sans-serif; font-weight: 400; font-size: 13px; color: rgba(226,232,240,0.5); margin-top: 4px; }
+  .f4-body { font-family: 'Geist', sans-serif; font-weight: 400; font-size: 13.5px; color: rgba(226,232,240,0.75); line-height: 1.6; margin-top: 10px; }
+  .f4-btn { font-family: 'Geist', sans-serif; font-weight: 600; font-size: 13px; }
+  .f4-stat { font-family: 'Geist', sans-serif; font-weight: 700; font-size: 26px; }
+  .f4-mono { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+
+  /* ── Font 5: Lexend + DM Sans ── */
+  .f5-h { font-family: 'Lexend Deca', sans-serif; font-weight: 700; font-size: 22px; color: #fff; letter-spacing: -0.02em; }
+  .f5-sub { font-family: 'DM Sans', sans-serif; font-weight: 400; font-size: 13px; color: rgba(226,232,240,0.5); margin-top: 4px; }
+  .f5-body { font-family: 'DM Sans', sans-serif; font-weight: 400; font-size: 13.5px; color: rgba(226,232,240,0.75); line-height: 1.6; margin-top: 10px; }
+  .f5-btn { font-family: 'Lexend Deca', sans-serif; font-weight: 600; font-size: 13px; }
+  .f5-stat { font-family: 'Lexend Deca', sans-serif; font-weight: 700; font-size: 26px; }
+  .f5-mono { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+
+  /* ── Hazırkı ── */
+  .f0-h { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 22px; color: #fff; letter-spacing: -0.02em; }
+  .f0-sub { font-family: 'Outfit', sans-serif; font-weight: 400; font-size: 13px; color: rgba(226,232,240,0.5); margin-top: 4px; }
+  .f0-body { font-family: 'Outfit', sans-serif; font-weight: 400; font-size: 13.5px; color: rgba(226,232,240,0.75); line-height: 1.6; margin-top: 10px; }
+  .f0-btn { font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 13px; }
+  .f0-stat { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 26px; }
+  .f0-mono { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+
+  /* Shared UI chrome */
+  .mock-card {
+    background: rgba(255,255,255,0.05);
+    border: 0.5px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-top: 12px;
+  }
+  .mock-btn {
+    display: inline-block;
+    background: #4ECDC4;
+    color: #0F1923;
+    border-radius: 8px;
+    padding: 8px 16px;
+    margin-top: 12px;
+  }
+  .mock-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 8px;
+  }
+  .mock-bar-wrap {
+    flex: 1;
+    height: 5px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .mock-bar { height: 100%; background: #4ECDC4; border-radius: 999px; }
+  .mock-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .mock-stat-box {
+    background: rgba(78,205,196,0.06);
+    border: 0.5px solid rgba(78,205,196,0.15);
+    border-radius: 10px;
+    padding: 10px 8px;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<h1>🔤 NIDA — Font Seçimi Preview</h1>
+
+<div class="grid">
+
+  <!-- HAZIRKI -->
+  <div class="card">
+    <span class="badge">Hazırkı</span>
+    <div class="label">Syne + Outfit + JetBrains Mono</div>
+    <div class="f0-h">Xoş gəldin, Anar 👋</div>
+    <div class="f0-sub">NDA-2024-001 · 10-cu sinif, I qrup</div>
+    <div class="f0-body">Bugün 3 fənn üzrə məşq edə bilərsiniz. Zəif sahələrinizi gücləndirin.</div>
+    <div class="mock-stats">
+      <div class="mock-stat-box"><div class="f0-stat" style="color:#4ECDC4">73%</div><div style="font-family:'Outfit';font-size:10px;color:rgba(226,232,240,0.4);margin-top:3px">ORTA</div></div>
+      <div class="mock-stat-box"><div class="f0-stat">24</div><div style="font-family:'Outfit';font-size:10px;color:rgba(226,232,240,0.4);margin-top:3px">TEST</div></div>
+      <div class="mock-stat-box"><div class="f0-stat" style="color:#F6AD55">7🔥</div><div style="font-family:'Outfit';font-size:10px;color:rgba(226,232,240,0.4);margin-top:3px">STREAK</div></div>
+    </div>
+    <div class="mock-card">
+      <div class="mock-row"><span>📐</span><span class="f0-body" style="margin:0;flex:1">Riyaziyyat</span><span class="f0-mono" style="color:#4ECDC4">68%</span></div>
+      <div class="mock-bar-wrap" style="margin-top:6px"><div class="mock-bar" style="width:68%"></div></div>
+    </div>
+    <div class="mock-btn"><span class="f0-btn">Test Başla →</span></div>
+  </div>
+
+  <!-- 1: Inter + Space Grotesk -->
+  <div class="card">
+    <span class="badge">Seçim 1</span>
+    <div class="label">Space Grotesk + Inter + JetBrains Mono</div>
+    <div class="f1-h">Xoş gəldin, Anar 👋</div>
+    <div class="f1-sub">NDA-2024-001 · 10-cu sinif, I qrup</div>
+    <div class="f1-body">Bugün 3 fənn üzrə məşq edə bilərsiniz. Zəif sahələrinizi gücləndirin.</div>
+    <div class="mock-stats">
+      <div class="mock-stat-box"><div class="f1-stat" style="color:#4ECDC4">73%</div><div style="font-family:'Inter';font-size:10px;color:rgba(226,232,240,0.4);margin-top:3px">ORTA</div></div>
+      <div class="mock-stat-box"><div class="f1-stat">24</div><div style="font-family:'Inter';font-size:10px;color:rgba(226,232,240,0.4);margin-top:3px">TEST</div></div>
+      <div class="mock-stat-box"><div class="f1-stat" style="color:#F6AD55">7🔥</div><div style="font-family:'Inter';font-size:10px;color:rgba(226,232,240,0.4);margin-top:3px">STREAK</div></div>
+    </div>
+    <div class="mock-card">
+      <div class="mock-row"><span>📐</span><span class="f1-body" style="margin:0;flex:1">Riyaziyyat</span><span class="f1-mono" style="color:#4ECDC4">68%</span></div>
+      <div class="mock-bar-wrap" style="margin-top:6px"><div class="mock-bar" style="width:68%"></div></div>
+    </div>
+    <div class="mock-btn"><span class="f1-btn">Test Başla →</span></div>
+  </div>
+
+  <!-- 2: Outfit + Plus Jakarta Sans -->
+  <div class="card">
+    <span class="badge">Seçim 2</span>
+    <div class="label">Outfit Bold + Plus Jakarta Sans + Fira Code</div>
+    <div class="f2-h">Xoş gəldin, Anar 👋</div>
+    <div class="f2-sub">NDA-2024-001 · 10-cu sinif, I qrup</div>
+    <div class="f2-body">Bugün 3 fənn üzrə məşq edə bilərsiniz. Zəif sahələrinizi gücləndirin.</div>
+    <div class="mock-stats">
+      <div class="mock-stat-box"><div class="f2-stat" style="color:#4ECDC4">73%</div><div style="font-family:'Plus Jakarta Sans';font-size:10px;color:rgba(226,232,240,0.4);margin-top:3px">ORTA</div></div>
+      <div class="mock-stat-box"><div class="f2-stat">24</div><div style="font-family:'Plus Jakarta Sans';font-size:10px;color:rgba(226,232,240,0.4);margin-top:3px">TEST</div></div>
+      <div class="mock-stat-box"><div class="f2-stat" style="color:#F6AD55">7🔥</div><div style="font-family:'Plus Jakarta Sans';font-size:10px;color:rgba(226,232,240,0.4);margin-top:3px">STREAK</div></div>
+    </div>
+    <div class="mock-card">
+      <div class="mock-row"><span>📐</span><span class="f2-body" style="margin:0;flex:1">Riyaziyyat</span><span class="f2-mono" style="color:#4ECDC4">68%</span></div>
+      <div class="mock-bar-wrap" style="margin-top:6px"><div class="mock-bar" style="width:68%"></div></div>
+    </div>
+    <div class="mock-btn"><span class="f2-btn">Test Başla →</span></div>
+  </div>
+
+  <!-- 3: Poppins + Nunito -->
+  <div class="card">
+    <span class="badge">Seçim 3</span>
+    <div class="label">Poppins + Nunito + JetBrains Mono</div>
+    <div class="f3-h">Xoş gəldin, Anar 👋</div>
+    <div class="f3-sub">NDA-2024-001 · 10-cu sinif, I qrup</div>
+    <div class="f3-body">Bugün 3 fənn üzrə məşq edə bilərsiniz. Zəif sahələrinizi gücləndirin.</div>
+    <div class="mock-stats">
+      <div class="mock-stat-box"><div class="f3-stat" style="color:#4ECDC4">73%</div><div style="font-family:'Nunito';font-size:10px;color:rgba(226,232,240,0.4);margin-top:3px">ORTA</div></div>
+      <div class="mock-stat-box"><div class="f3-stat">24</div><div style="font-family:'Nunito';font-size:10px;color:rgba(226,232,240,0.4);margin-top:3px">TEST</div></div>
+      <div class="mock-stat-box"><div class="f3-stat" style="color:#F6AD55">7🔥</div><div style="font-family:'Nunito';font-size:10px;color:rgba(226,232,240,0.4);margin-top:3px">STREAK</div></div>
+    </div>
+    <div class="mock-card">
+      <div class="mock-row"><span>📐</span><span class="f3-body" style="margin:0;flex:1">Riyaziyyat</span><span class="f3-mono" style="color:#4ECDC4">68%</span></div>
+      <div class="mock-bar-wrap" style="margin-top:6px"><div class="mock-bar" style="width:68%"></div></div>
+    </div>
+    <div class="mock-btn"><span class="f3-btn">Test Başla →</span></div>
+  </div>
+
+  <!-- 4: Geist -->
+  <div class="card">
+    <span class="badge">Seçim 4</span>
+    <div class="label">Geist + Geist + JetBrains Mono</div>
+    <div class="f4-h">Xoş gəldin, Anar 👋</div>
+    <div class="f4-sub">NDA-2024-001 · 10-cu sinif, I qrup</div>
+    <div class="f4-body">Bugün 3 fənn üzrə məşq edə bilərsiniz. Zəif sahələrinizi gücləndirin.</div>
+    <div class="mock-stats">
+      <div class="mock-stat-box"><div class="f4-stat" style="color:#4ECDC4">73%</div><div style="font-family:'Geist';font-size:10px;color:rgba(226,232,240,0.4);margin-top:3px">ORTA</div></div>
+      <div class="mock-stat-box"><div class="f4-stat">24</div><div style="font-family:'Geist';font-size:10px;color:rgba(226,232,240,0.4);margin-top:3px">TEST</div></div>
+      <div class="mock-stat-box"><div class="f4-stat" style="color:#F6AD55">7🔥</div><div style="font-family:'Geist';font-size:10px;color:rgba(226,232,240,0.4);margin-top:3px">STREAK</div></div>
+    </div>
+    <div class="mock-card">
+      <div class="mock-row"><span>📐</span><span class="f4-body" style="margin:0;flex:1">Riyaziyyat</span><span class="f4-mono" style="color:#4ECDC4">68%</span></div>
+      <div class="mock-bar-wrap" style="margin-top:6px"><div class="mock-bar" style="width:68%"></div></div>
+    </div>
+    <div class="mock-btn"><span class="f4-btn">Test Başla →</span></div>
+  </div>
+
+  <!-- 5: Lexend + DM Sans -->
+  <div class="card">
+    <span class="badge">Seçim 5</span>
+    <div class="label">Lexend Deca + DM Sans + JetBrains Mono</div>
+    <div class="f5-h">Xoş gəldin, Anar 👋</div>
+    <div class="f5-sub">NDA-2024-001 · 10-cu sinif, I qrup</div>
+    <div class="f5-body">Bugün 3 fənn üzrə məşq edə bilərsiniz. Zəif sahələrinizi gücləndirin.</div>
+    <div class="mock-stats">
+      <div class="mock-stat-box"><div class="f5-stat" style="color:#4ECDC4">73%</div><div style="font-family:'DM Sans';font-size:10px;color:rgba(226,232,240,0.4);margin-top:3px">ORTA</div></div>
+      <div class="mock-stat-box"><div class="f5-stat">24</div><div style="font-family:'DM Sans';font-size:10px;color:rgba(226,232,240,0.4);margin-top:3px">TEST</div></div>
+      <div class="mock-stat-box"><div class="f5-stat" style="color:#F6AD55">7🔥</div><div style="font-family:'DM Sans';font-size:10px;color:rgba(226,232,240,0.4);margin-top:3px">STREAK</div></div>
+    </div>
+    <div class="mock-card">
+      <div class="mock-row"><span>📐</span><span class="f5-body" style="margin:0;flex:1">Riyaziyyat</span><span class="f5-mono" style="color:#4ECDC4">68%</span></div>
+      <div class="mock-bar-wrap" style="margin-top:6px"><div class="mock-bar" style="width:68%"></div></div>
+    </div>
+    <div class="mock-btn"><span class="f5-btn">Test Başla →</span></div>
+  </div>
+
+</div>
+</body>
+</html>
