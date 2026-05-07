@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
+const NotFound = lazy(() => import('../features/errors/NotFound'))
 import { useAuthStore } from '../stores/authStore'
 import { Role } from '../types/models'
 import PageWrapper from '../components/layout/PageWrapper'
@@ -17,7 +18,7 @@ const TeacherPending     = lazy(() => import('../features/auth/pages/TeacherPend
 const ParentOnboarding   = lazy(() => import('../features/auth/pages/ParentOnboarding'))
 
 const StudentDashboard  = lazy(() => import('../features/student/dashboard/Dashboard'))
-const StudentSubjects   = lazy(() => import('../features/student/subjects/Subjects'))
+const StudentSubjects   = lazy(() => import('../features/student/subjects/StudentSubjects'))
 const MathTopics        = lazy(() => import('../features/student/subjects/MathTopics'))
 const MathQuiz          = lazy(() => import('../features/student/quiz/MathQuiz'))
 const StudentQuiz       = lazy(() => import('../features/student/quiz/Quiz'))
@@ -34,6 +35,9 @@ const TeacherTasks      = lazy(() => import('../features/teacher/exams/TeacherTa
 const TeacherAnalytics  = lazy(() => import('../features/teacher/analytics/TeacherStudentStats'))
 const TeacherExams      = lazy(() => import('../features/teacher/exams/Exams'))
 const TeacherMessages   = lazy(() => import('../features/teacher/messages/Messages'))
+const TeacherHomework   = lazy(() => import('../features/teacher/homework/TeacherHomework'))
+const StudentHomework   = lazy(() => import('../features/student/homework/StudentHomework'))
+const TopicQuizPage     = lazy(() => import('../features/student/quiz/TopicQuizPage'))
 
 const ParentDashboard    = lazy(() => import('../features/parent/dashboard/Dashboard'))
 const ParentChildren     = lazy(() => import('../features/parent/children/Children'))
@@ -94,6 +98,8 @@ export const router = createBrowserRouter(
               { path: '/statistics',      element: <PageWrapper><StudentStats /></PageWrapper> },
               { path: '/messages',        element: <PageWrapper><StudentMessages /></PageWrapper> },
               { path: '/wrong-questions', element: <PageWrapper><WrongQuestions /></PageWrapper> },
+              { path: '/homework',        element: <PageWrapper><StudentHomework /></PageWrapper> },
+              { path: '/topic-quiz',      element: <TopicQuizPage /> },
             ],
           },
 
@@ -108,6 +114,7 @@ export const router = createBrowserRouter(
               { path: 'tasks',     element: <TeacherTasks /> },
               { path: 'analytics', element: <TeacherAnalytics /> },
               { path: 'exams',     element: <PageWrapper><TeacherExams /></PageWrapper> },
+              { path: 'homework',  element: <PageWrapper><TeacherHomework /></PageWrapper> },
               { path: 'messages',  element: <PageWrapper><TeacherMessages /></PageWrapper> },
             ],
           },
@@ -129,7 +136,7 @@ export const router = createBrowserRouter(
       }],
     },
 
-    { path: '*', element: <Navigate to="/" replace /> },
+    { path: '*', element: <Suspense fallback={null}><NotFound /></Suspense> },
   ],
   {
     future: {

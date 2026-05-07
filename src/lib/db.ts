@@ -307,21 +307,71 @@ export async function dbGetSentPermissions() {
 }
 
 export async function dbSendPermission(receiverUniqueId: string, subject: string, studentUid?: string) {
+  const teacherUid = uid()
   const ref = await addDoc(collection(db, 'permissions'), {
-    teacherUid: uid(),
+    teacherUid,
     receiverUniqueId,
     studentUid: studentUid ?? '',
     subject,
     status: 'pending',
     createdAt: serverTimestamp(),
   })
+
+  // When a query is sent to a student, auto-notify their connected parents
+  if (studentUid) {
+    try {
+      const parentSnap = await getDocs(
+        query(collection(db, 'parentRequests'), where('childUid', '==', studentUid), where('status', '==', 'accepted'))
+      )
+      const parentUids = [...new Set(parentSnap.docs.map(d => (d.data() as any).parentUid as string).filter(Boolean))]
+      if (parentUids.length) {
+        const [teacherProfile, studentProfile] = await Promise.all([
+          dbGetProfile().catch(() => null),
+          dbGetProfileByUid(studentUid).catch(() => null),
+        ])
+        const teacherName = (teacherProfile as any)?.fullName ?? 'Müəllim'
+        const studentName = (studentProfile as any)?.fullName ?? 'şagird'
+        await Promise.all(parentUids.map(pUid =>
+          dbWriteNotification(pUid, {
+            title: '📨 Müəllim Sorğusu',
+            body:  `${teacherName} (${subject}) — ${studentName} ilə əlaqə qurmaq üçün sorğu göndərdi.`,
+            type:  'teacher_query',
+            data:  { teacherUid, studentUid, subject, permissionId: ref.id },
+          }).catch(() => {})
+        ))
+      }
+    } catch { /* silent */ }
+  }
+
   return { id: ref.id }
 }
 
 export async function dbRespondPermission(permId: string, approved: boolean) {
+  const permSnap = await getDoc(doc(db, 'permissions', permId))
   await updateDoc(doc(db, 'permissions', permId), {
     status: approved ? 'granted' : 'rejected', respondedAt: serverTimestamp(),
   })
+  // Auto-notify connected parents when permission is granted
+  if (approved && permSnap.exists()) {
+    const perm = permSnap.data() as any
+    if (perm.studentUid) {
+      // Find parent of this student
+      const parentSnap = await getDocs(
+        query(collection(db, 'parentRequests'), where('childUid', '==', perm.studentUid), where('status', '==', 'accepted'))
+      )
+      const parentUids = [...new Set(parentSnap.docs.map(d => (d.data() as any).parentUid as string).filter(Boolean))]
+      const studentProfile = await dbGetProfileByUid(perm.studentUid).catch(() => null)
+      const studentName = (studentProfile as any)?.fullName ?? 'şagird'
+      await Promise.all(parentUids.map(pUid =>
+        dbWriteNotification(pUid, {
+          title: '🔗 Müəllim Bağlantısı',
+          body:  `Müəllim "${perm.subject}" fənnindən ${studentName} hesabına giriş hüququ qazandı.`,
+          type:  'teacher_link',
+          data:  { teacherUid: perm.teacherUid, studentUid: perm.studentUid, subject: perm.subject },
+        }).catch(() => {})
+      ))
+    }
+  }
   return { success: true }
 }
 
@@ -351,6 +401,121 @@ export async function dbActivateExam(examId: string) {
   return { success: true }
 }
 
+// ─── Notification helpers (internal) ─────────────────────────────────────────
+
+async function dbWriteNotification(targetUid: string, notif: { title: string; body: string; type: string; data?: any }) {
+  await addDoc(collection(db, 'userProfiles', targetUid, 'notifications'), {
+    ...notif, read: false, createdAt: serverTimestamp(),
+  })
+}
+
+async function dbNotifyGroup(groupId: string, notif: { title: string; body: string; type: string; data?: any }) {
+  const groupSnap = await getDoc(doc(db, 'groups', groupId))
+  if (!groupSnap.exists()) return
+  const studentUids: string[] = (groupSnap.data() as any).studentUids ?? []
+  if (!studentUids.length) return
+  await Promise.all(studentUids.map(sUid => dbWriteNotification(sUid, notif).catch(() => {})))
+  // Also notify connected parents
+  if (studentUids.length > 0) {
+    const parentSnap = await getDocs(query(
+      collection(db, 'parentRequests'),
+      where('childUid', 'in', studentUids.slice(0, 30)),
+      where('status', '==', 'accepted')
+    ))
+    const parentUids = [...new Set(parentSnap.docs.map(d => (d.data() as any).parentUid as string).filter(Boolean))]
+    await Promise.all(parentUids.map(pUid => dbWriteNotification(pUid, { ...notif, body: `(Uşağınız) ${notif.body}` }).catch(() => {})))
+  }
+}
+
+// ─── Homeworks ────────────────────────────────────────────────────────────────
+
+export async function dbCreateHomework(data: {
+  groupId:      string
+  topicId:      string
+  topicTitle:   string
+  subject:      string
+  repeatLimit:  number
+  dueDate?:     string
+}) {
+  const teacherUid = uid()
+  const ref = await addDoc(collection(db, 'homeworks'), {
+    ...data, teacherUid, createdAt: serverTimestamp(),
+  })
+  await dbNotifyGroup(data.groupId, {
+    title: '📖 Yeni Ev Tapşırığı',
+    body:  `"${data.topicTitle}" mövzusu üzrə ev tapşırığı verildi.${data.dueDate ? ' Son tarix: ' + new Date(data.dueDate).toLocaleDateString('az-AZ') : ''}`,
+    type:  'homework',
+    data:  { homeworkId: ref.id, groupId: data.groupId },
+  }).catch(() => {})
+  return { id: ref.id, ...data, teacherUid }
+}
+
+export async function dbGetTeacherHomeworks() {
+  const snap = await getDocs(
+    query(collection(db, 'homeworks'), where('teacherUid', '==', uid()), orderBy('createdAt', 'desc'))
+  )
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+}
+
+export async function dbGetGroupHomeworks(groupId: string) {
+  const snap = await getDocs(
+    query(collection(db, 'homeworks'), where('groupId', '==', groupId))
+  )
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+}
+
+export async function dbSaveHomeworkAttempt(data: {
+  homeworkId:    string
+  groupId:       string
+  topicId:       string
+  attemptNumber: number
+  percent:       number
+  correct:       number
+  total:         number
+  wrongQuestions: { id: string; question: string; correctAnswer: string; studentAnswer: string }[]
+  completedAt:   string
+}) {
+  const studentUid = uid()
+  const ref = await addDoc(collection(db, 'homeworkAttempts'), {
+    ...data, studentUid, createdAt: serverTimestamp(),
+  })
+  // Late submission check: if homework has a dueDate, notify teacher
+  try {
+    const hwSnap = await getDoc(doc(db, 'homeworks', data.homeworkId))
+    if (hwSnap.exists()) {
+      const hw = hwSnap.data() as any
+      if (hw.dueDate && new Date(data.completedAt) > new Date(hw.dueDate)) {
+        const profile = await dbGetProfile()
+        await dbWriteNotification(hw.teacherUid, {
+          title: '⏰ Gecikmiş Ev Tapşırığı',
+          body:  `Şagird "${hw.topicTitle}" tapşırığını son tarixdən sonra tamamladı. (${data.percent}%)`,
+          type:  'homework_late',
+          data:  { homeworkId: data.homeworkId, studentUid, studentName: (profile as any)?.fullName ?? '' },
+        })
+      }
+    }
+  } catch { /* silent */ }
+  return { id: ref.id }
+}
+
+export async function dbGetHomeworkAttempts(homeworkId: string) {
+  const snap = await getDocs(
+    query(collection(db, 'homeworkAttempts'), where('homeworkId', '==', homeworkId), orderBy('createdAt', 'asc'))
+  )
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+}
+
+export async function dbGetMyHomeworkAttempts(homeworkId: string) {
+  const snap = await getDocs(
+    query(
+      collection(db, 'homeworkAttempts'),
+      where('homeworkId', '==', homeworkId),
+      where('studentUid', '==', uid()),
+    )
+  )
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+}
+
 // ─── Parent–Child connections ─────────────────────────────────────────────────
 
 export async function dbSendParentRequest(childUid: string, childUniqueId: string) {
@@ -368,15 +533,23 @@ export async function dbSendParentRequest(childUid: string, childUniqueId: strin
     return { id: existing.docs[0].id }
   }
   const profile = await dbGetProfile()
+  const parentName = ((profile as any)?.fullName as string) || 'Valideyn'
   const ref = await addDoc(collection(db, 'parentRequests'), {
     parentUid:      uid(),
-    parentName:     ((profile as any)?.fullName  as string) || '',
+    parentName,
     parentUniqueId: ((profile as any)?.uniqueId as string) || '',
     childUid,
     childUniqueId,
     status:    'pending',
     createdAt: serverTimestamp(),
   })
+  // Notify the student so they know to approve/reject
+  await dbWriteNotification(childUid, {
+    title: '👨‍👩‍👧 Valideyn Sorğusu',
+    body:  `${parentName} sizi övlad kimi əlavə etmək istəyir. Qəbul etmək üçün profil səhifənizi yoxlayın.`,
+    type:  'parent_request',
+    data:  { parentUid: uid(), requestId: ref.id },
+  }).catch(() => {})
   return { id: ref.id }
 }
 
@@ -623,4 +796,321 @@ export async function dbTeacherReplyToParent(parentUid: string, childUid: string
     createdAt: serverTimestamp(),
   })
   return { id: ref.id, parentUid, teacherUid: currentUid, childUid, fromRole: 'teacher', text: text.trim(), sentAt, createdAt: sentAt }
+}
+
+// ─── Sinaq İmtahanları ────────────────────────────────────────────────────────
+
+export async function dbCreateSinaqExam(data: {
+  groupId:    string
+  subject:    string
+  topicIds:   string[]
+  difficulty: string
+  timeLimit:  number
+  startDate:  string
+  endDate:    string
+}) {
+  const teacherUid = uid()
+  const ref = await addDoc(collection(db, 'sinaqExams'), {
+    ...data, teacherUid, summarySentAt: null, createdAt: serverTimestamp(),
+  })
+  const groupSnap = await getDoc(doc(db, 'groups', data.groupId)).catch(() => null)
+  const groupName = groupSnap?.exists() ? (groupSnap.data() as any).name : 'Qrup'
+  await dbNotifyGroup(data.groupId, {
+    title: '📋 Yeni Sinaq İmtahanı',
+    body:  `${groupName} — ${data.topicIds.length} mövzu üzrə sinaq imtahanı. Başlanğıc: ${new Date(data.startDate).toLocaleDateString('az-AZ')}`,
+    type:  'sinaq_exam',
+    data:  { examId: ref.id, groupId: data.groupId },
+  }).catch(() => {})
+  return { id: ref.id, ...data, teacherUid }
+}
+
+export async function dbGetTeacherSinaqExams() {
+  const snap = await getDocs(
+    query(collection(db, 'sinaqExams'), where('teacherUid', '==', uid()), orderBy('createdAt', 'desc'))
+  )
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+}
+
+export async function dbGetSinaqExamsForStudent() {
+  const currentUid = uid()
+  if (!currentUid) return []
+  const groupsSnap = await getDocs(
+    query(collection(db, 'groups'), where('studentUids', 'array-contains', currentUid))
+  )
+  if (groupsSnap.empty) return []
+  const groupIds = groupsSnap.docs.map(d => d.id)
+  const results: any[] = []
+  for (const gid of groupIds.slice(0, 10)) {
+    const snap = await getDocs(
+      query(collection(db, 'sinaqExams'), where('groupId', '==', gid), orderBy('createdAt', 'desc'))
+    )
+    snap.docs.forEach(d => results.push({ id: d.id, ...d.data() }))
+  }
+  return results
+}
+
+export async function dbSaveSinaqAttempt(data: {
+  examId:         string
+  groupId:        string
+  startedAt:      string
+  completedAt:    string
+  timeSpent:      number
+  percent:        number
+  correct:        number
+  total:          number
+  wrongQuestions: { id: string; question: string; correctAnswer: string; studentAnswer: string }[]
+}) {
+  const studentUid = uid()
+  const profile = await dbGetProfile()
+  const studentName = (profile as any)?.fullName ?? ''
+  const ref = await addDoc(collection(db, 'sinaqAttempts'), {
+    ...data, studentUid, studentName, createdAt: serverTimestamp(),
+  })
+  return { id: ref.id }
+}
+
+export async function dbGetSinaqAttempts(examId: string) {
+  const snap = await getDocs(
+    query(collection(db, 'sinaqAttempts'), where('examId', '==', examId))
+  )
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+}
+
+export async function dbGetMySinaqAttempt(examId: string) {
+  const snap = await getDocs(
+    query(
+      collection(db, 'sinaqAttempts'),
+      where('examId', '==', examId),
+      where('studentUid', '==', uid())
+    )
+  )
+  return snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() }
+}
+
+export async function dbMarkSinaqSummarySent(examId: string, teacherUid: string, summary: {
+  groupName: string; attemptCount: number; avgPercent: number; examId: string
+}) {
+  await updateDoc(doc(db, 'sinaqExams', examId), { summarySentAt: serverTimestamp() })
+  await dbWriteNotification(teacherUid, {
+    title: '📊 Sinaq İmtahanı Başa Çatdı',
+    body:  `${summary.groupName} — ${summary.attemptCount} şagird iştirak etdi, ortalama nəticə: ${summary.avgPercent}%`,
+    type:  'sinaq_summary',
+    data:  summary,
+  })
+}
+
+// ─── Cross-user data access (with permission) ─────────────────────────────────
+
+// Teacher gets all homework attempts for a student (requires accepted permission)
+export async function dbGetStudentHomeworkAttemptsByUid(studentUid: string) {
+  const snap = await getDocs(
+    query(collection(db, 'homeworkAttempts'), where('studentUid', '==', studentUid), orderBy('createdAt', 'desc'))
+  )
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+}
+
+// Teacher gets all sinaq attempts for a student (requires accepted permission)
+export async function dbGetStudentSinaqAttemptsByUid(studentUid: string) {
+  const snap = await getDocs(
+    query(collection(db, 'sinaqAttempts'), where('studentUid', '==', studentUid), orderBy('createdAt', 'desc'))
+  )
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+}
+
+// Parent gets child's homework attempts (auto-visible)
+export async function dbGetChildHomeworkAttempts(studentUid: string) {
+  const snap = await getDocs(
+    query(collection(db, 'homeworkAttempts'), where('studentUid', '==', studentUid), orderBy('createdAt', 'desc'))
+  )
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+}
+
+// Parent gets shared exam results for a child
+export async function dbGetChildSharedExamAttempts(studentUid: string) {
+  // Exams shared by teacher come as notifications with type='sinaq_share'
+  // Also get sinaqAttempts for this student where the exam has sharedWithParents=true
+  const attSnap = await getDocs(
+    query(collection(db, 'sinaqAttempts'), where('studentUid', '==', studentUid))
+  )
+  const attempts = attSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+  // Filter to exams that are shared
+  const examIds = [...new Set(attempts.map((a: any) => a.examId))]
+  const shared: any[] = []
+  for (const eid of examIds) {
+    const examSnap = await getDoc(doc(db, 'sinaqExams', eid)).catch(() => null)
+    if (examSnap?.exists() && (examSnap.data() as any).sharedWithParents) {
+      const att = attempts.find((a: any) => a.examId === eid)
+      if (att) shared.push({ ...att, examData: examSnap.data() })
+    }
+  }
+  return shared
+}
+
+// Teacher gets students who have accepted their permission
+export async function dbGetPermittedStudents() {
+  const snap = await getDocs(
+    query(collection(db, 'permissions'), where('teacherUid', '==', uid()), where('status', '==', 'granted'))
+  )
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+}
+
+// Teacher shares sinaq exam results with parents of group students
+export async function dbShareSinaqWithParents(examId: string, _groupId: string) {
+  // Mark the exam as shared
+  await updateDoc(doc(db, 'sinaqExams', examId), { sharedWithParents: true })
+
+  // Gather all attempts for this exam
+  const attSnap = await getDocs(
+    query(collection(db, 'sinaqAttempts'), where('examId', '==', examId))
+  )
+  const attempts = attSnap.docs.map(d => ({ ...d.data() })) as any[]
+  const studentUids = attempts.map((a: any) => a.studentUid).filter(Boolean)
+
+  if (!studentUids.length) return
+
+  // Find parents of these students
+  const parentSnap = await getDocs(
+    query(collection(db, 'parentRequests'), where('childUid', 'in', studentUids.slice(0, 30)), where('status', '==', 'accepted'))
+  )
+  const parentChildPairs = parentSnap.docs.map(d => ({ parentUid: (d.data() as any).parentUid, childUid: (d.data() as any).childUid }))
+
+  // Send each parent their child's result
+  await Promise.all(parentChildPairs.map(async ({ parentUid, childUid }) => {
+    const att = attempts.find((a: any) => a.studentUid === childUid)
+    if (!att) return
+    await dbWriteNotification(parentUid, {
+      title: '📊 Sinaq İmtahanı Nəticəsi',
+      body:  `Uşağınız sinaq imtahanında ${att.percent}% nəticə göstərdi (${att.correct}/${att.total} düzgün).`,
+      type:  'sinaq_share',
+      data:  { examId, studentUid: childUid, percent: att.percent, correct: att.correct, total: att.total },
+    }).catch(() => {})
+  }))
+}
+
+// Teacher gets parent UIDs for a student (to enable direct messaging)
+export async function dbGetParentUidsByStudentUid(studentUid: string) {
+  const snap = await getDocs(
+    query(collection(db, 'parentRequests'), where('childUid', '==', studentUid), where('status', '==', 'accepted'))
+  )
+  if (snap.empty) return []
+  const parentUids = [...new Set(snap.docs.map(d => (d.data() as any).parentUid as string).filter(Boolean))]
+  const profiles = await Promise.all(parentUids.map(u => dbGetProfileByUid(u).catch(() => null)))
+  return parentUids.map((uid, i) => ({ uid, profile: profiles[i] })).filter(x => x.profile)
+}
+
+// Teacher sends direct message to a parent (identified by parentUid + childUid context)
+export async function dbTeacherMessageParent(parentUid: string, childUid: string, text: string) {
+  const currentUid = uid()
+  const sentAt = new Date().toISOString()
+  const ref = await addDoc(collection(db, 'parentTeacherMessages'), {
+    parentUid,
+    teacherUid: currentUid,
+    childUid,
+    fromRole: 'teacher',
+    text: text.trim(),
+    sentAt,
+    createdAt: serverTimestamp(),
+  })
+  // Notify the parent
+  await dbWriteNotification(parentUid, {
+    title: '💬 Müəllim Mesajı',
+    body:  text.length > 80 ? text.slice(0, 80) + '…' : text,
+    type:  'teacher_message',
+    data:  { teacherUid: currentUid, childUid },
+  }).catch(() => {})
+  return { id: ref.id, parentUid, teacherUid: currentUid, childUid, fromRole: 'teacher', text: text.trim(), sentAt, createdAt: sentAt }
+}
+
+// Teacher's homework results per group (for analytics)
+export async function dbGetGroupHomeworkResults(groupId: string) {
+  const hwSnap = await getDocs(
+    query(collection(db, 'homeworks'), where('groupId', '==', groupId))
+  )
+  const homeworks = hwSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+  const results = await Promise.all(homeworks.map(async (hw: any) => {
+    const attSnap = await getDocs(
+      query(collection(db, 'homeworkAttempts'), where('homeworkId', '==', hw.id))
+    )
+    const attempts = attSnap.docs.map(d => d.data()) as any[]
+    const participants = [...new Set(attempts.map(a => a.studentUid))].length
+    const avgPct = attempts.length ? Math.round(attempts.reduce((s, a) => s + a.percent, 0) / attempts.length) : 0
+    return { ...hw, participantCount: participants, avgPercent: avgPct, attemptCount: attempts.length }
+  }))
+  return results
+}
+
+// Teacher sends a direct message to a student (writes to student's inbox + notification)
+export async function dbTeacherSendDirectMessage(recipientUniqueIdOrEmail: string, text: string) {
+  const teacherUid = uid()
+  const sentAt = new Date().toISOString()
+
+  // Resolve recipient to a full profile
+  const recipient = await dbSearchUser(recipientUniqueIdOrEmail)
+  if (!recipient) throw new Error('Şagird tapılmadı')
+  const recipientUid: string = (recipient as any).id ?? ''
+  if (!recipientUid) throw new Error('Şagird UID tapılmadı')
+
+  const teacherProfile = await dbGetProfile().catch(() => null)
+  const teacherName = (teacherProfile as any)?.fullName ?? 'Müəllim'
+
+  // Save in teacher's sent collection
+  const ref = await addDoc(collection(db, 'userProfiles', teacherUid, 'sent'), {
+    to:       recipientUniqueIdOrEmail,
+    toUid:    recipientUid,
+    toLabel:  (recipient as any).fullName ?? recipientUniqueIdOrEmail,
+    mode:     'direct',
+    text:     text.trim(),
+    sentAt,
+    createdAt: serverTimestamp(),
+  })
+
+  // Deliver to student's received subcollection
+  await addDoc(collection(db, 'userProfiles', recipientUid, 'received'), {
+    fromUid:   teacherUid,
+    fromName:  teacherName,
+    fromRole:  'teacher',
+    text:      text.trim(),
+    sentAt,
+    createdAt: serverTimestamp(),
+  }).catch(() => {})
+
+  // Send notification to student
+  await dbWriteNotification(recipientUid, {
+    title: `💬 ${teacherName}`,
+    body:  text.length > 80 ? text.slice(0, 80) + '…' : text,
+    type:  'teacher_direct_message',
+    data:  { teacherUid, messageId: ref.id },
+  }).catch(() => {})
+
+  return {
+    id:      ref.id,
+    to:      recipientUniqueIdOrEmail,
+    toUid:   recipientUid,
+    toLabel: (recipient as any).fullName ?? recipientUniqueIdOrEmail,
+    mode:    'direct',
+    text:    text.trim(),
+    sentAt,
+  }
+}
+
+// Şagird gələn mesajlarını oxuyur (müəllim tərəfindən göndərilmiş)
+export async function dbGetReceivedMessages() {
+  const snap = await getDocs(
+    query(collection(db, 'userProfiles', uid(), 'received'), orderBy('createdAt', 'desc'))
+  )
+  return snap.docs.map(d => ({ ...d.data(), id: d.id, createdAt: tsToIso((d.data() as any).createdAt) }))
+}
+
+// Şagirdin bütün ev tapşırığı cəhdlərini gətir (yanlış suallar üçün)
+export async function dbGetAllMyHomeworkAttempts() {
+  const currentUid = uid()
+  if (!currentUid) return []
+  const snap = await getDocs(
+    query(
+      collection(db, 'homeworkAttempts'),
+      where('studentUid', '==', currentUid),
+      orderBy('createdAt', 'desc'),
+    )
+  )
+  return snap.docs.map(d => ({ ...d.data(), id: d.id, createdAt: tsToIso((d.data() as any).createdAt) }))
 }

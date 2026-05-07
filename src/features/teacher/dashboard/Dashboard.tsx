@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { apiGetMyGroups, apiGetMyExams, apiGetSentPermissions } from '@/lib/api'
 import { SPRING } from '@/lib/motion'
+import { TeacherDashboardSkeleton } from '@/components/ui/Skeleton'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 const today = () => new Date().toISOString().slice(0, 10)
@@ -332,6 +333,8 @@ export default function TeacherDashboard() {
     return !groupStudentUids.has(sid)
   })
 
+  if (loading) return <TeacherDashboardSkeleton />
+
   return (
     <div className="page-inner">
 
@@ -452,7 +455,16 @@ export default function TeacherDashboard() {
                 />
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {groups.map(g => <GroupCard key={g.id} group={g} navigate={navigate} />)}
+                  {groups.map((g, i) => (
+                    <motion.div
+                      key={g.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.06, ...SPRING }}
+                    >
+                      <GroupCard group={g} navigate={navigate} />
+                    </motion.div>
+                  ))}
                   <button
                     onClick={() => navigate('/teacher/groups')}
                     style={{
@@ -478,7 +490,16 @@ export default function TeacherDashboard() {
                 />
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {individuals.map(p => <IndividualCard key={p.id} perm={p} />)}
+                  {individuals.map((p, i) => (
+                    <motion.div
+                      key={p.id}
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.06, ...SPRING }}
+                    >
+                      <IndividualCard perm={p} />
+                    </motion.div>
+                  ))}
                 </div>
               )}
             </motion.div>

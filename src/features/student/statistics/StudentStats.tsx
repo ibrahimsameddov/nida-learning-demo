@@ -3,7 +3,9 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiGetMyStatistics } from '@/lib/api';
-import FloatingOrbs from "../../components/FloatingOrbs";
+import { getExamData }       from '@/types/examData';
+import { useAuthStore }      from '@/stores/authStore';
+import FloatingOrbs from "@/components/ui/FloatingOrbs";
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Topbar } from '@/components/layout/GlassTopbar';
 import { BottomNav } from '@/components/layout/BottomNav';
@@ -330,13 +332,74 @@ function EmptyCard() {
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
+// ── Exam Group Switcher ───────────────────────────────────────────────────────
+function ExamGroupSwitcher({ active, onChange, examData }) {
+  const groups = [
+    { id: 'buraxilis', ...EXAM_CONFIG.buraxilis, count: examData[0]?.subjects?.length ?? 0 },
+    { id: 'qebul',     ...EXAM_CONFIG.qebul,     count: examData[1]?.subjects?.length ?? 0 },
+  ];
+  return (
+    <motion.div initial={{ opacity:0, y:12 }} animate={{ opacity:1, y:0 }}
+      transition={{ ...SPRING, delay:0.04 }}
+      style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+      {groups.map(g => {
+        const isActive = active === g.id;
+        return (
+          <motion.button key={g.id} whileTap={{ scale:0.97 }}
+            onClick={() => onChange(g.id)}
+            style={{
+              padding:'14px 16px', borderRadius:18, cursor:'pointer', textAlign:'left',
+              border: isActive ? `1.5px solid ${g.colorHex}` : '0.5px solid var(--border)',
+              background: isActive
+                ? `linear-gradient(135deg, ${g.colorHex}1A, ${g.colorHex}08)`
+                : 'var(--bg-card)',
+              boxShadow: isActive ? `0 0 20px ${g.colorHex}22` : 'none',
+              transition:'all 0.22s ease',
+            }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
+              <span style={{
+                width:32, height:32, borderRadius:10,
+                display:'flex', alignItems:'center', justifyContent:'center', fontSize:16,
+                background: isActive ? `${g.colorHex}22` : 'rgba(255,255,255,0.05)',
+                border: isActive ? `1px solid ${g.colorHex}44` : '1px solid transparent',
+                flexShrink:0,
+              }}>{g.icon}</span>
+              <span style={{
+                fontFamily:"'Lexend Deca',sans-serif", fontWeight:700, fontSize:13,
+                color: isActive ? g.colorHex : 'var(--text-1)',
+              }}>{g.title}</span>
+            </div>
+            <div style={{ paddingLeft:40 }}>
+              <span style={{
+                fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:999,
+                background: isActive ? `${g.colorHex}22` : 'rgba(255,255,255,0.06)',
+                color: isActive ? g.colorHex : 'var(--text-3)',
+              }}>
+                {g.count > 0 ? `${g.count} fənn` : 'Seçilməyib'}
+              </span>
+            </div>
+          </motion.button>
+        );
+      })}
+    </motion.div>
+  );
+}
+
 export default function StudentStats() {
   const navigate = useNavigate();
   const [params]    = useSearchParams();
-  const examType    = params.get("type") || "buraxilis";
+  const [examType, setExamType] = useState(params.get("type") || "buraxilis");
   const [activeTab, setActiveTab] = useState("umumi");
   const [apiStats,  setApiStats]  = useState(null);
   const [loading,   setLoading]   = useState(true);
+
+  const user           = useAuthStore(s => s.user);
+  const foreignLang    = (user as any)?.foreignLang    ?? 'english';
+  const specialtyGroup = (user as any)?.specialtyGroup ?? '';
+  const examData       = getExamData(foreignLang, specialtyGroup);
+  const activeSubjectTitles = examType === 'buraxilis'
+    ? (examData[0]?.subjects ?? []).map((s: any) => s.title)
+    : (examData[1]?.subjects ?? []).map((s: any) => s.title);
 
   useEffect(() => {
     setLoading(true);
@@ -352,7 +415,13 @@ export default function StudentStats() {
   }, []);
 
   const cfg  = EXAM_CONFIG[examType] || EXAM_CONFIG.buraxilis;
-  const data = apiStats !== null ? normalizeStats(apiStats, activeTab) : null;
+  const rawData = apiStats !== null ? normalizeStats(apiStats, activeTab) : null;
+  const data = rawData ? {
+    ...rawData,
+    subjects: activeSubjectTitles.length > 0
+      ? rawData.subjects.filter((s: any) => activeSubjectTitles.includes(s.subject))
+      : rawData.subjects,
+  } : null;
   const hasData = data !== null && (data.subjects.length > 0 || data.trend.length > 0 || (apiStats?.totalTests ?? 0) > 0);
 
   const displayStats = apiStats;
@@ -390,6 +459,13 @@ export default function StudentStats() {
               <p style={{ color:"rgba(255,255,255,0.35)", fontSize:12 }}>Detallı statistika analizi</p>
             </div>
           </motion.div>
+
+          {/* ── Exam Group Switcher ── */}
+          <ExamGroupSwitcher
+            active={examType}
+            onChange={setExamType}
+            examData={examData}
+          />
 
           {/* ── Time tabs ── */}
           <motion.div initial={{opacity:0,y:12}} animate={{opacity:1,y:0}}

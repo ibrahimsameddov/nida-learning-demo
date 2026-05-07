@@ -1,8 +1,113 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+
+    // ── User Profiles — hər user yalnız öz datasına çata bilər ────────────────
+    match /userProfiles/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Digər userlərin notification/received yazması üçün (müəllim → şagird)
+    match /userProfiles/{userId}/notifications/{notifId} {
+      allow write: if request.auth != null;
+    }
+    match /userProfiles/{userId}/received/{msgId} {
+      allow write: if request.auth != null;
+    }
+
+    // ── Public Profiles ────────────────────────────────────────────────────────
+    match /publicProfiles/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ── Groups ─────────────────────────────────────────────────────────────────
+    match /groups/{groupId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null &&
+        (resource == null || resource.data.teacherUid == request.auth.uid);
+      allow delete: if request.auth != null &&
+        resource.data.teacherUid == request.auth.uid;
+    }
+
+    // ── Permissions ────────────────────────────────────────────────────────────
+    match /permissions/{permId} {
+      allow read: if request.auth != null && (
+        resource.data.teacherUid == request.auth.uid ||
+        resource.data.studentUid == request.auth.uid
+      );
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && (
+        resource.data.teacherUid == request.auth.uid ||
+        resource.data.studentUid == request.auth.uid
+      );
+    }
+
+    // ── Homeworks ──────────────────────────────────────────────────────────────
+    match /homeworks/{hwId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null &&
+        resource.data.teacherUid == request.auth.uid;
+    }
+
+    // ── Homework Attempts ──────────────────────────────────────────────────────
+    match /homeworkAttempts/{attId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null &&
+        resource.data.studentUid == request.auth.uid;
+    }
+
+    // ── Sinaq Exams ────────────────────────────────────────────────────────────
+    match /sinaqExams/{examId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null &&
+        resource.data.teacherUid == request.auth.uid;
+    }
+
+    // ── Sinaq Attempts ─────────────────────────────────────────────────────────
+    match /sinaqAttempts/{attId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+    }
+
+    // ── Parent Requests ────────────────────────────────────────────────────────
+    match /parentRequests/{reqId} {
+      allow read: if request.auth != null && (
+        resource.data.parentUid == request.auth.uid ||
+        resource.data.childUid == request.auth.uid
+      );
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && (
+        resource.data.parentUid == request.auth.uid ||
+        resource.data.childUid == request.auth.uid
+      );
+    }
+
+    // ── Parent–Teacher Messages ────────────────────────────────────────────────
+    match /parentTeacherMessages/{msgId} {
+      allow read: if request.auth != null && (
+        resource.data.parentUid == request.auth.uid ||
+        resource.data.teacherUid == request.auth.uid
+      );
+      allow create: if request.auth != null;
+    }
+
+    // ── Group Messages ─────────────────────────────────────────────────────────
+    match /groupMessages/{msgId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // ── Exams (legacy) ─────────────────────────────────────────────────────────
+    match /exams/{examId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null &&
+        resource.data.teacherUid == request.auth.uid;
     }
   }
 }

@@ -83,8 +83,16 @@ function CityInput({ value, onChange, error }: {
         placeholder="Bakı"
         autoComplete="off"
         value={query}
-        onChange={e => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); setFocused(-1) }}
+        onChange={e => { setQuery(e.target.value); onChange(''); setOpen(true); setFocused(-1) }}
         onFocus={() => { if (filtered.length > 0) setOpen(true) }}
+        onBlur={() => {
+          setTimeout(() => {
+            const match = AZ_CITIES.find(c => c.toLowerCase() === query.toLowerCase())
+            if (match) { setQuery(match); onChange(match) }
+            else { setQuery(''); onChange('') }
+            setOpen(false)
+          }, 150)
+        }}
         onKeyDown={handleKey}
         style={error ? { borderColor: 'var(--danger)' } : undefined}
       />
@@ -161,23 +169,28 @@ const GRADES = [
 // ── SubjectChips ──────────────────────────────────────────────────────────────
 function SubjectChips({ selected, onChange }: { selected: string[]; onChange: (s: string[]) => void }) {
   const toggle = (id: string) => {
-    onChange(selected.includes(id) ? selected.filter(s => s !== id) : [...selected, id])
+    if (selected.includes(id)) onChange(selected.filter(s => s !== id))
+    else if (selected.length < 2) onChange([...selected, id])
   }
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
       {TEACHER_SUBJECTS.map(s => {
-        const active = selected.includes(s.id)
+        const active   = selected.includes(s.id)
+        const disabled = !active && selected.length >= 2
         return (
           <button
             key={s.id}
             type="button"
             onClick={() => toggle(s.id)}
+            disabled={disabled}
             style={{
               padding: '7px 12px', borderRadius: 10, fontSize: 12, fontWeight: 600,
-              cursor: 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 5,
+              cursor: disabled ? 'not-allowed' : 'pointer',
+              transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 5,
               background: active ? 'rgba(79,135,255,0.14)' : 'rgba(255,255,255,0.04)',
               border: active ? '1px solid rgba(79,135,255,0.5)' : '1px solid rgba(255,255,255,0.1)',
               color: active ? '#4F87FF' : 'var(--text-3)',
+              opacity: disabled ? 0.35 : 1,
             }}
           >
             <span>{s.icon}</span>
@@ -237,6 +250,9 @@ export default function Register() {
           subjects:  teacherSubjects,
           status:    'pending',
         }),
+        ...(data.role === Role.Student && {
+          foreignLang: data.foreignLang ?? 'english',
+        }),
         ...(data.role === Role.Parent && { phone: data.phone || '' }),
         uid:       cred.user.uid,
         uniqueId,
@@ -266,23 +282,22 @@ export default function Register() {
       minHeight: '100dvh', display: 'flex', alignItems: 'center',
       justifyContent: 'center', padding: '16px 16px 40px',
       position: 'relative', overflow: 'hidden',
-      background: isTeacher
-        ? 'linear-gradient(160deg, #080818 0%, #0c1228 50%, #080818 100%)'
-        : 'var(--bg-primary)',
+      background: 'var(--bg-primary)',
     }}>
       {/* Ambient blobs */}
       <div style={{
         position: 'absolute', top: '-10%', left: '-10%',
         width: '40vw', height: '40vw', borderRadius: '50%',
-        filter: 'blur(120px)', pointerEvents: 'none', opacity: 0.3,
+        filter: 'blur(120px)', pointerEvents: 'none', opacity: 0.25,
         background: `radial-gradient(circle, ${accentColor} 0%, transparent 70%)`,
         transition: 'background 0.5s',
       }} />
       <div style={{
         position: 'absolute', bottom: '-10%', right: '-10%',
         width: '35vw', height: '35vw', borderRadius: '50%',
-        filter: 'blur(100px)', pointerEvents: 'none', opacity: 0.15,
-        background: isTeacher ? '#6C63FF' : 'var(--accent)',
+        filter: 'blur(100px)', pointerEvents: 'none', opacity: 0.12,
+        background: accentColor,
+        transition: 'background 0.5s',
       }} />
 
       <div style={{ width: '100%', maxWidth: 440, animation: 'fadeUp 0.45s cubic-bezier(0.34,1.56,0.64,1) both' }}>
@@ -323,8 +338,8 @@ export default function Register() {
 
         <form onSubmit={handleSubmit(onSubmit)}>
           <div style={{
-            background: isTeacher ? 'rgba(255,255,255,0.03)' : 'var(--bg-card)',
-            border: `0.5px solid ${step === 2 && isTeacher ? 'rgba(79,135,255,0.18)' : 'var(--border)'}`,
+            background: 'var(--bg-card)',
+            border: `0.5px solid ${step === 2 ? `${accentColor}30` : 'var(--border)'}`,
             borderRadius: 20, padding: '24px 20px',
             backdropFilter: 'blur(20px)',
             marginBottom: 14,
@@ -439,7 +454,7 @@ export default function Register() {
                 </FormField>
 
                 <FormField
-                  label={`Tədris etdiyiniz fənlər${teacherSubjects.length > 0 ? ` (${teacherSubjects.length} seçilib)` : ''}`}
+                  label={`Tədris etdiyiniz fənlər — maks. 2${teacherSubjects.length > 0 ? ` (${teacherSubjects.length}/2 seçilib)` : ''}`}
                 >
                   <SubjectChips selected={teacherSubjects} onChange={setTeacherSubjects} />
                   {teacherSubjects.length === 0 && (
@@ -519,6 +534,7 @@ export default function Register() {
                         <option value="russian">Rus dili</option>
                       </select>
                     </FormField>
+
                   </>
                 )}
 
@@ -545,7 +561,11 @@ export default function Register() {
                   <button type="button" className="btn btn-ghost btn-full" onClick={() => setStep(1)}>
                     ← Geri
                   </button>
-                  <button type="submit" className="btn btn-primary btn-full" disabled={isLoading}>
+                  <button
+                    type="submit"
+                    className="btn btn-primary btn-full"
+                    disabled={isLoading}
+                  >
                     {isLoading ? <span className="spinner" style={{ width: 16, height: 16 }} /> : 'Qeydiyyat'}
                   </button>
                 </div>

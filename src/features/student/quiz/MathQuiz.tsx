@@ -33,12 +33,13 @@ export default function MathQuiz() {
   const meta         = findTopic(topicId!)
 
   // activeQs — cavablanacaq aktiv suallar (tam, yalnız səhvlər, yaxud qalan)
-  const [activeQs,  setActiveQs]  = useState<MathQ[]>(allQuestions)
-  const [idx,       setIdx]       = useState(0)
-  const [answers,   setAnswers]   = useState<boolean[]>([])
-  const [doneData,  setDoneData]  = useState<DoneData | null>(null)
-  const [saving,    setSaving]    = useState(false)
-  const [elapsed,   setElapsed]   = useState(0)
+  const [activeQs,      setActiveQs]      = useState<MathQ[]>(allQuestions)
+  const [idx,           setIdx]           = useState(0)
+  const [answers,       setAnswers]       = useState<boolean[]>([])
+  const [pendingChoice, setPendingChoice] = useState<number | null>(null)
+  const [doneData,      setDoneData]      = useState<DoneData | null>(null)
+  const [saving,        setSaving]        = useState(false)
+  const [elapsed,       setElapsed]       = useState(0)
   const timerRef   = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
   const totalStart = useRef(Date.now())
 
@@ -53,10 +54,18 @@ export default function MathQuiz() {
   const currentQ = activeQs[idx]
   const progress = activeQs.length > 0 ? (idx / activeQs.length) * 100 : 0
 
+  // 1-ci addım: variantı seç (vurgulan, hələ qeyd edilmir)
   const handleSelect = (i: number) => {
-    const correct    = i === currentQ.correctIndex
+    setPendingChoice(i)
+  }
+
+  // 2-ci addım: "Təsdiqlə" düyməsi ilə cavabı qeyd et
+  const handleConfirm = () => {
+    if (pendingChoice === null) return
+    const correct    = pendingChoice === currentQ.correctIndex
     const newAnswers = [...answers, correct]
     setAnswers(newAnswers)
+    setPendingChoice(null)
     if (idx + 1 >= activeQs.length) {
       finishQuiz(newAnswers, activeQs)
     } else {
@@ -108,6 +117,7 @@ export default function MathQuiz() {
     setActiveQs(qs)
     setIdx(0)
     setAnswers([])
+    setPendingChoice(null)
     setDoneData(null)
     setElapsed(0)
     totalStart.current = Date.now()
@@ -231,26 +241,9 @@ export default function MathQuiz() {
             Sual {idx + 1}/{activeQs.length} · {answers.length} cavablandı
           </p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {/* Erkən bitirmə düyməsi — ən azı 1 sual cavablandıqda görünür */}
-          {answers.length > 0 && (
-            <button
-              onClick={() => finishQuiz(answers, activeQs)}
-              disabled={saving}
-              style={{
-                padding: '5px 12px', borderRadius: 16, fontSize: 11, fontWeight: 700,
-                background: 'rgba(255,179,71,0.18)', border: '1px solid rgba(255,179,71,0.5)',
-                color: '#ffb347', cursor: 'pointer', transition: 'background 0.15s',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              ✓ Tamamla ({answers.length}/{activeQs.length})
-            </button>
-          )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 20, background: 'rgba(255,255,255,0.1)', color: 'white' }}>
-            <span style={{ fontSize: 10 }}>⏱</span>
-            <span style={{ fontSize: 12, fontFamily: 'monospace' }}>{formatTime(elapsed)}</span>
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 20, background: 'rgba(255,255,255,0.1)', color: 'white' }}>
+          <span style={{ fontSize: 10 }}>⏱</span>
+          <span style={{ fontSize: 12, fontFamily: 'monospace' }}>{formatTime(elapsed)}</span>
         </div>
       </header>
 
@@ -269,39 +262,64 @@ export default function MathQuiz() {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {currentQ.options.map((opt, i) => (
-            <button
-              key={i}
-              onClick={() => handleSelect(i)}
-              style={{
-                width: '100%', textAlign: 'left', padding: '13px 16px',
-                borderRadius: 10, border: '0.5px solid var(--border)',
-                background: 'var(--bg-card)', cursor: 'pointer',
-                fontSize: 14, color: 'var(--text-1)',
-                transition: 'border-color 0.15s, background 0.15s',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.borderColor = 'var(--primary)'
-                e.currentTarget.style.background  = 'rgba(0,212,255,0.05)'
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.borderColor = 'var(--border)'
-                e.currentTarget.style.background  = 'var(--bg-card)'
-              }}
-            >
-              <span style={{ fontSize: 11, fontFamily: 'monospace', marginRight: 8, opacity: 0.45 }}>
-                {String.fromCharCode(65 + i)})
-              </span>
-              {opt}
-            </button>
-          ))}
+          {currentQ.options.map((opt, i) => {
+            const isSelected = pendingChoice === i
+            return (
+              <button
+                key={i}
+                onClick={() => handleSelect(i)}
+                style={{
+                  width: '100%', textAlign: 'left', padding: '13px 16px',
+                  borderRadius: 10,
+                  border: isSelected ? '1.5px solid var(--primary)' : '0.5px solid var(--border)',
+                  background: isSelected ? 'rgba(0,212,255,0.08)' : 'var(--bg-card)',
+                  cursor: 'pointer', fontSize: 14, color: 'var(--text-1)',
+                  transition: 'border-color 0.15s, background 0.15s',
+                  display: 'flex', alignItems: 'center', gap: 10,
+                }}
+              >
+                <span style={{
+                  width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 700, fontFamily: 'monospace',
+                  background: isSelected ? 'var(--primary)' : 'rgba(255,255,255,0.07)',
+                  color: isSelected ? '#fff' : 'var(--text-3)',
+                  border: isSelected ? 'none' : '0.5px solid var(--border)',
+                  transition: 'all 0.15s',
+                }}>
+                  {String.fromCharCode(65 + i)}
+                </span>
+                {opt}
+              </button>
+            )
+          })}
         </div>
       </main>
 
-      <footer style={{ padding: '12px 16px 28px', maxWidth: 520, margin: '0 auto', width: '100%' }}>
-        <Button fullWidth size="lg" onClick={() => finishQuiz(answers, activeQs)} loading={saving} disabled={answers.length === 0}>
-          Testi bitir
+      <footer style={{ padding: '12px 16px 28px', maxWidth: 520, margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {/* Əsas: Təsdiqlə */}
+        <Button
+          fullWidth size="lg"
+          onClick={handleConfirm}
+          disabled={pendingChoice === null}
+          style={{
+            background: pendingChoice !== null ? 'var(--primary)' : undefined,
+            opacity: pendingChoice !== null ? 1 : 0.45,
+            transition: 'opacity 0.2s, background 0.2s',
+          }}
+        >
+          {pendingChoice !== null ? '✓ Təsdiqlə' : 'Variant seçin'}
         </Button>
+
+        {/* Erkən bitirmə — ən azı 1 cavab verildikdə */}
+        {answers.length > 0 && (
+          <Button fullWidth variant="ghost" size="md"
+            onClick={() => finishQuiz(answers, activeQs)}
+            loading={saving}
+          >
+            Testi bitir ({answers.length}/{activeQs.length})
+          </Button>
+        )}
       </footer>
     </div>
   )

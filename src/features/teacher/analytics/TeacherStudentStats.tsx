@@ -9,6 +9,10 @@ import toast, { Toaster } from "react-hot-toast";
 import {
   apiGetMyGroups, apiGetStudentProfiles,
   apiGetSentPermissions, apiGetStudentStatsByUid,
+  apiGetTeacherSinaqExams, apiGetSinaqAttempts,
+  apiGetTeacherHomeworks, apiGetHomeworkAttempts,
+  apiGetStudentHomeworkAttempts, apiGetStudentSinaqAttempts,
+  apiGetGroupHomeworkResults, apiGetProfile,
 } from '@/lib/api';
 import { SPRING } from '@/lib/motion';
 
@@ -23,7 +27,8 @@ const PERIODS = [
 const TABS = [
   { key: "overview",  label: "📊 Baxış"     },
   { key: "groups",    label: "👥 Qruplar"   },
-  { key: "topics",    label: "📚 Mövzular"  },
+  { key: "sinaqlar",  label: "📋 Sinaqlar"  },
+  { key: "tapshiriq", label: "📖 Tapşırıq"  },
   { key: "students",  label: "👤 Şagirdlər" },
 ];
 
@@ -596,21 +601,80 @@ function StudentsTab({ groups, onSelect }: any) {
   );
 }
 
+// Azerbaijani language & literature subjects (label variants stored in subjectStats)
+const AZ_LANG_SUBJECTS = ['azərbaycan dili', 'ədəbiyyat', 'azerbaijani', 'literature', 'az dili', 'azərbaycan']
+
+function isAzLanguageTeacher(subjects: string[]) {
+  return subjects.some(s =>
+    AZ_LANG_SUBJECTS.some(az => s.toLowerCase().includes(az))
+  )
+}
+
 // ── Student detail view ────────────────────────────────────────────────────────
-function StudentDetailView({ student, onBack }: any) {
-  const [period, setPeriod] = useState('weekly');
-  const score  = mockScore((student.fullName??student.id??''));
-  const subjects = Object.keys(WEAK_TOPICS).slice(0,5).map((subj,i)=>({
-    subject: subj,
-    avg:     Math.max(20, Math.min(95, score + (seed(subj+(student.id??''))%30)-12)),
-    color:   SUBJECT_COLORS[i%SUBJECT_COLORS.length],
-  }));
-  const trend = Array.from({length:period==='daily'?7:period==='weekly'?6:5},(_,i)=>({
-    label: period==='daily'  ? `${i+1}Ç`
-         : period==='weekly' ? `H${i+1}`
-         : ["Yan","Fev","Mar","Apr","May"][i]??`${i+1}`,
-    score: Math.max(25,Math.min(96, score+(seed((student.id??'')+i+period)%28)-10)),
-  }));
+function StudentDetailView({ student, onBack, teacherSubjects }: any) {
+  const [period,     setPeriod]     = useState('weekly');
+  const [hwAttempts, setHwAttempts] = useState<any[]>([]);
+  const [sinaqAtts,  setSinaqAtts]  = useState<any[]>([]);
+  const [realStats,  setRealStats]  = useState<any>(null);
+  const [dataLoaded, setDataLoaded] = useState(false);
+
+  const isAzTeacher = isAzLanguageTeacher(teacherSubjects ?? []);
+
+  useEffect(() => {
+    if (!student.id) return;
+    Promise.all([
+      apiGetStudentHomeworkAttempts(student.id).catch(() => []),
+      apiGetStudentSinaqAttempts(student.id).catch(() => []),
+      apiGetStudentStatsByUid(student.id).catch(() => null),
+    ]).then(([hw, sinaq, stats]) => {
+      setHwAttempts(Array.isArray(hw) ? hw : []);
+      setSinaqAtts(Array.isArray(sinaq) ? sinaq : []);
+      setRealStats(stats);
+      setDataLoaded(true);
+    });
+  }, [student.id]);
+
+  // Use real stats if available, fall back to mock
+  const score = realStats?.averagePercent
+    ? Math.round(realStats.averagePercent)
+    : mockScore((student.fullName ?? student.id ?? ''));
+
+  // Build subject list from real subjectStats, or mock
+  const subjects: any[] = realStats?.subjectStats?.length
+    ? realStats.subjectStats.slice(0, 7).map((s: any, i: number) => ({
+        subject: s.subject,
+        avg:     Math.round(s.averagePercent ?? 0),
+        color:   SUBJECT_COLORS[i % SUBJECT_COLORS.length],
+        tests:   s.totalTests ?? 0,
+      }))
+    : Object.keys(WEAK_TOPICS).slice(0, 5).map((subj, i) => ({
+        subject: subj,
+        avg:     Math.max(20, Math.min(95, score + (seed(subj + (student.id ?? '')) % 30) - 12)),
+        color:   SUBJECT_COLORS[i % SUBJECT_COLORS.length],
+        tests:   0,
+      }));
+
+  // For Azerbaijani language teachers: filtered subject stats
+  const azSubjects = subjects.filter(s =>
+    AZ_LANG_SUBJECTS.some(az => s.subject.toLowerCase().includes(az))
+  );
+
+  // Trend from real weekly progress, or mock
+  const trend = realStats?.weeklyProgress?.length
+    ? realStats.weeklyProgress.slice(-7).map((p: any, i: number) => ({
+        label: `${i + 1}Ç`,
+        score: Math.round(p.percentage ?? 0),
+      }))
+    : Array.from({ length: period === 'daily' ? 7 : period === 'weekly' ? 6 : 5 }, (_, i) => ({
+        label: period === 'daily'  ? `${i + 1}Ç`
+             : period === 'weekly' ? `H${i + 1}`
+             : ['Yan', 'Fev', 'Mar', 'Apr', 'May'][i] ?? `${i + 1}`,
+        score: Math.max(25, Math.min(96, score + (seed((student.id ?? '') + i + period) % 28) - 10)),
+      }));
+
+  const bestPercent = realStats?.bestPercent ?? Math.min(99, score + 12);
+  const totalTests  = realStats?.totalTests  ?? (4 + (seed(student.id ?? '') % 12));
+  const streak      = realStats?.streak      ?? (1 + (seed((student.id ?? '') + period) % 7));
 
   return (
     <div style={{display:'flex',flexDirection:'column',gap:12}}>
@@ -642,102 +706,439 @@ function StudentDetailView({ student, onBack }: any) {
         }}>{score}%</div>
       </div>
 
-      <PeriodToggle period={period} onChange={setPeriod}/>
-
-      {/* KPI */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8}}>
-        {[
-          {icon:'🎯',label:'Orta bal',val:`${score}%`,col:'#4F87FF'},
-          {icon:'🏆',label:'Ən yaxşı',val:`${Math.min(99,score+12)}%`,col:'#00C9A7'},
-          {icon:'📋',label:'Test',val:4+(seed(student.id??'')%12),col:'#6C63FF'},
-          {icon:'🔥',label:'Seriya',val:1+(seed((student.id??'')+period)%7),col:'#F4A261'},
-        ].map(k=>(
-          <div key={k.label} style={{
-            background:`color-mix(in srgb,${k.col} 9%,var(--bg-card))`,
-            border:`0.5px solid ${k.col}33`,borderRadius:12,padding:'11px 8px',textAlign:'center',
-          }}>
-            <div style={{fontSize:16,marginBottom:4}}>{k.icon}</div>
-            <div style={{fontFamily:"'Lexend Deca',sans-serif",fontWeight:800,fontSize:15,color:k.col}}>{k.val}</div>
-            <div style={{fontSize:9,color:'var(--text-3)',marginTop:1}}>{k.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Trend chart */}
-      <div className="card" style={{padding:'16px'}}>
-        <div style={{fontSize:12,fontWeight:700,color:'var(--text-1)',marginBottom:12}}>
-          Performans trendi
+      {!dataLoaded && (
+        <div style={{display:'flex',justifyContent:'center',padding:20}}>
+          <span className="spinner" style={{width:22,height:22}}/>
         </div>
-        <SvgLine trend={trend} color={score>=70?'#00C9A7':score>=50?'#4F87FF':'#F4A261'}/>
-      </div>
+      )}
 
-      {/* Subject radar */}
-      <div className="card" style={{padding:'16px'}}>
-        <div style={{fontSize:12,fontWeight:700,color:'var(--text-1)',marginBottom:4}}>
-          Fənn üzrə dəqiqlik
-        </div>
-        <div style={{fontSize:10,color:'var(--text-3)',marginBottom:12}}>Hər fənndə orta faiz</div>
-        <SvgRadar stats={subjects}/>
-        <div style={{display:'flex',flexDirection:'column',gap:7,marginTop:12}}>
-          {subjects.map(s=>(
-            <div key={s.subject} style={{display:'flex',alignItems:'center',gap:10}}>
-              <div style={{width:8,height:8,borderRadius:2,background:s.color,flexShrink:0}}/>
-              <span style={{fontSize:11,color:'var(--text-2)',flex:1}}>{s.subject}</span>
-              <div style={{flex:2,height:4,borderRadius:999,background:'rgba(255,255,255,0.07)'}}>
-                <div style={{
-                  height:'100%',borderRadius:999,width:`${s.avg}%`,
-                  background:s.avg>=70?'#00C9A7':s.avg>=50?'#4F87FF':'#F4A261',transition:'width 0.5s',
-                }}/>
-              </div>
-              <span style={{fontSize:11,fontWeight:700,color:s.color,flexShrink:0,minWidth:32,textAlign:'right'}}>
-                {s.avg}%
-              </span>
+      {dataLoaded && <>
+        <PeriodToggle period={period} onChange={setPeriod}/>
+
+        {/* KPI */}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8}}>
+          {[
+            {icon:'🎯',label:'Orta bal',  val:`${score}%`,         col:'#4F87FF'},
+            {icon:'🏆',label:'Ən yaxşı',  val:`${bestPercent}%`,   col:'#00C9A7'},
+            {icon:'📋',label:'Test sayı', val:totalTests,           col:'#6C63FF'},
+            {icon:'🔥',label:'Seriya',    val:`${streak} gün`,      col:'#F4A261'},
+          ].map(k=>(
+            <div key={k.label} style={{
+              background:`color-mix(in srgb,${k.col} 9%,var(--bg-card))`,
+              border:`0.5px solid ${k.col}33`,borderRadius:12,padding:'11px 8px',textAlign:'center',
+            }}>
+              <div style={{fontSize:16,marginBottom:4}}>{k.icon}</div>
+              <div style={{fontFamily:"'Lexend Deca',sans-serif",fontWeight:800,fontSize:15,color:k.col}}>{k.val}</div>
+              <div style={{fontSize:9,color:'var(--text-3)',marginTop:1}}>{k.label}</div>
             </div>
           ))}
         </div>
+
+        {/* Trend chart */}
+        <div className="card" style={{padding:'16px'}}>
+          <div style={{fontSize:12,fontWeight:700,color:'var(--text-1)',marginBottom:12}}>
+            Performans trendi
+          </div>
+          <SvgLine trend={trend} color={score>=70?'#00C9A7':score>=50?'#4F87FF':'#F4A261'}/>
+        </div>
+
+        {/* ── Azerbaijani language teacher: subject-specific section ── */}
+        {isAzTeacher && (
+          <div className="card" style={{
+            padding:'16px',
+            border:'0.5px solid rgba(108,99,255,0.3)',
+            background:'color-mix(in srgb,#6C63FF 5%,var(--bg-card))',
+          }}>
+            <div style={{fontSize:12,fontWeight:700,color:'#A78BFA',marginBottom:4}}>
+              🇦🇿 Azərbaycan dili və Ədəbiyyat
+            </div>
+            <div style={{fontSize:10,color:'var(--text-3)',marginBottom:14}}>
+              Bütün müəllimlərdən toplanmış fərdi statistika
+            </div>
+            {azSubjects.length === 0 ? (
+              <div style={{fontSize:12,color:'var(--text-3)',textAlign:'center',padding:'12px 0'}}>
+                Bu fənlər üzrə hələ test nəticəsi yoxdur
+              </div>
+            ) : (
+              azSubjects.map((s: any) => (
+                <div key={s.subject} style={{marginBottom:12}}>
+                  <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
+                    <span style={{fontSize:12,fontWeight:700,color:'var(--text-1)'}}>{s.subject}</span>
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                      <span style={{fontSize:10,color:'var(--text-3)'}}>{s.tests} test</span>
+                      <span style={{
+                        fontFamily:"'Lexend Deca',sans-serif",fontWeight:800,fontSize:14,
+                        color:s.avg>=70?'#00C9A7':s.avg>=50?'#4F87FF':'#F4A261',
+                      }}>{s.avg}%</span>
+                    </div>
+                  </div>
+                  <div style={{height:6,borderRadius:999,background:'rgba(255,255,255,0.07)'}}>
+                    <motion.div
+                      initial={{width:0}} animate={{width:`${s.avg}%`}}
+                      transition={{duration:0.6,ease:'easeOut'}}
+                      style={{
+                        height:'100%',borderRadius:999,
+                        background:s.avg>=70?'linear-gradient(90deg,#00C9A7,#4F87FF)'
+                                  :s.avg>=50?'linear-gradient(90deg,#4F87FF,#6C63FF)'
+                                  :'linear-gradient(90deg,#F4A261,#E24B4A)',
+                      }}
+                    />
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* All subjects radar */}
+        {subjects.length >= 2 && (
+          <div className="card" style={{padding:'16px'}}>
+            <div style={{fontSize:12,fontWeight:700,color:'var(--text-1)',marginBottom:4}}>
+              Fənn üzrə dəqiqlik
+            </div>
+            <div style={{fontSize:10,color:'var(--text-3)',marginBottom:12}}>
+              Hər fənndə orta faiz {realStats?.subjectStats?.length ? '(real data)' : '(təxmini)'}
+            </div>
+            <SvgRadar stats={subjects}/>
+            <div style={{display:'flex',flexDirection:'column',gap:7,marginTop:12}}>
+              {subjects.map((s:any)=>(
+                <div key={s.subject} style={{display:'flex',alignItems:'center',gap:10}}>
+                  <div style={{width:8,height:8,borderRadius:2,background:s.color,flexShrink:0}}/>
+                  <span style={{fontSize:11,color:'var(--text-2)',flex:1}}>{s.subject}</span>
+                  {s.tests > 0 && <span style={{fontSize:9,color:'var(--text-3)'}}>{s.tests}t</span>}
+                  <div style={{flex:2,height:4,borderRadius:999,background:'rgba(255,255,255,0.07)'}}>
+                    <div style={{
+                      height:'100%',borderRadius:999,width:`${s.avg}%`,
+                      background:s.avg>=70?'#00C9A7':s.avg>=50?'#4F87FF':'#F4A261',transition:'width 0.5s',
+                    }}/>
+                  </div>
+                  <span style={{fontSize:11,fontWeight:700,color:s.color,flexShrink:0,minWidth:32,textAlign:'right'}}>
+                    {s.avg}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Weak topics */}
+        <div className="card" style={{padding:'16px'}}>
+          <div style={{fontSize:12,fontWeight:700,color:'var(--text-1)',marginBottom:12}}>
+            ❌ Zəif mövzular
+          </div>
+          {subjects.filter(s=>s.avg<60).length===0 ? (
+            <div style={{fontSize:12,color:'#00C9A7',textAlign:'center',padding:'8px 0'}}>
+              ✓ Bütün fənlərdə yaxşı nəticə!
+            </div>
+          ) : (
+            subjects.filter(s=>s.avg<60).map((s:any)=>{
+              const wt = WEAK_TOPICS[s.subject]?.[0] ?? '—';
+              return (
+                <div key={s.subject} style={{
+                  display:'flex',justifyContent:'space-between',alignItems:'center',
+                  padding:'8px 10px',borderRadius:9,marginBottom:6,
+                  background:'rgba(226,75,74,0.06)',border:'0.5px solid rgba(226,75,74,0.2)',
+                }}>
+                  <div>
+                    <div style={{fontSize:11,fontWeight:600,color:'var(--text-1)'}}>{s.subject}</div>
+                    <div style={{fontSize:10,color:'var(--text-3)'}}>Ən zəif: {wt}</div>
+                  </div>
+                  <span style={{
+                    fontFamily:"'Lexend Deca',sans-serif",fontWeight:800,fontSize:14,color:'#E24B4A',
+                  }}>{s.avg}%</span>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Homework history — all teachers */}
+        {hwAttempts.length > 0 && (
+          <div className="card" style={{padding:'16px'}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+              <div style={{fontSize:12,fontWeight:700,color:'var(--text-1)'}}>
+                📖 Ev Tapşırığı Tarixçəsi
+              </div>
+              <span style={{fontSize:10,color:'var(--text-3)',background:'rgba(255,255,255,0.05)',padding:'2px 8px',borderRadius:6}}>
+                {hwAttempts.length} cəhd · bütün müəllimlər
+              </span>
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:7}}>
+              {hwAttempts.slice(0, 15).map((att: any, i: number) => (
+                <div key={att.id ?? i} style={{
+                  display:'flex',alignItems:'center',gap:10,
+                  padding:'8px 10px',borderRadius:9,
+                  background:'rgba(255,255,255,0.03)',border:'0.5px solid var(--border)',
+                }}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:12,color:'var(--text-2)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                      {att.topicTitle || att.topicId}
+                    </div>
+                    <div style={{fontSize:10,color:'var(--text-3)'}}>
+                      Cəhd #{att.attemptNumber ?? i+1} · {att.correct}/{att.total}
+                      {att.completedAt ? ` · ${new Date(att.completedAt).toLocaleDateString('az-AZ')}` : ''}
+                    </div>
+                  </div>
+                  <span style={{
+                    fontFamily:"'Lexend Deca',sans-serif",fontWeight:800,fontSize:14,
+                    color:att.percent>=70?'#00C9A7':att.percent>=50?'#4F87FF':'#F4A261',
+                  }}>{att.percent}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Sinaq history — all teachers */}
+        {sinaqAtts.length > 0 && (
+          <div className="card" style={{padding:'16px'}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+              <div style={{fontSize:12,fontWeight:700,color:'var(--text-1)'}}>
+                📋 Sinaq İmtahanı Tarixçəsi
+              </div>
+              <span style={{fontSize:10,color:'var(--text-3)',background:'rgba(255,255,255,0.05)',padding:'2px 8px',borderRadius:6}}>
+                {sinaqAtts.length} nəticə · bütün müəllimlər
+              </span>
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:7}}>
+              {sinaqAtts.slice(0, 15).map((att: any, i: number) => (
+                <div key={att.id ?? i} style={{
+                  display:'flex',alignItems:'center',gap:10,
+                  padding:'8px 10px',borderRadius:9,
+                  background:'rgba(255,255,255,0.03)',border:'0.5px solid var(--border)',
+                }}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:11,color:'var(--text-2)'}}>
+                      {att.subject ? `${att.subject} · ` : ''}{Math.round((att.timeSpent ?? 0) / 60)} dəq
+                    </div>
+                    <div style={{fontSize:10,color:'var(--text-3)'}}>
+                      {att.correct}/{att.total} düzgün
+                      {att.completedAt ? ` · ${new Date(att.completedAt).toLocaleDateString('az-AZ')}` : ''}
+                    </div>
+                  </div>
+                  <span style={{
+                    fontFamily:"'Lexend Deca',sans-serif",fontWeight:800,fontSize:14,
+                    color:att.percent>=70?'#00C9A7':att.percent>=50?'#4F87FF':'#F4A261',
+                  }}>{att.percent}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {dataLoaded && hwAttempts.length === 0 && sinaqAtts.length === 0 && (
+          <div className="card" style={{textAlign:'center',padding:'28px 24px'}}>
+            <div style={{fontSize:32,marginBottom:8}}>📭</div>
+            <div style={{fontSize:12,color:'var(--text-3)'}}>Bu şagird hələ tapşırıq və ya sinaq tamamlamamışdır</div>
+          </div>
+        )}
+      </>}
+    </div>
+  );
+}
+
+// ── Sinaqlar Tab ──────────────────────────────────────────────────────────────
+function SinaqlarTab({ groupMap }: { groupMap: Record<string, string> }) {
+  const [exams,    setExams]    = useState<any[]>([]);
+  const [attMap,   setAttMap]   = useState<Record<string, any[]>>({});
+  const [loading,  setLoading]  = useState(true);
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  useEffect(() => {
+    apiGetTeacherSinaqExams()
+      .then(async (list: any[]) => {
+        setExams(list);
+        const pairs = await Promise.all(list.map(async (e: any) => {
+          const atts = await apiGetSinaqAttempts(e.id).catch(() => []);
+          return [e.id, atts] as [string, any[]];
+        }));
+        setAttMap(Object.fromEntries(pairs));
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const fmtDate = (ts: any) => {
+    if (!ts) return '—';
+    const d = ts?.seconds ? new Date(ts.seconds * 1000) : new Date(ts);
+    return d.toLocaleDateString('az-AZ', { day: 'numeric', month: 'short' });
+  };
+
+  const DIFF = { asan: '🟢', orta: '🟡', cetin: '🔴', qarisiq: '🎲' };
+
+  if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><span className="spinner" style={{ width: 24, height: 24 }} /></div>;
+
+  if (!exams.length) return (
+    <div className="card" style={{ textAlign: 'center', padding: '40px 24px' }}>
+      <div style={{ fontSize: 40, marginBottom: 10 }}>📋</div>
+      <div style={{ fontSize: 13, color: 'var(--text-3)' }}>Sinaq imtahanı yoxdur</div>
+    </div>
+  );
+
+  const now = Date.now();
+  const getStatus = (e: any) => {
+    const s = e.startDate?.seconds ? e.startDate.seconds * 1000 : new Date(e.startDate ?? 0).getTime();
+    const en = e.endDate?.seconds   ? e.endDate.seconds * 1000   : new Date(e.endDate   ?? 0).getTime();
+    if (now < s) return 'upcoming';
+    if (now <= en) return 'active';
+    return 'ended';
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {exams.map((e: any) => {
+        const atts = attMap[e.id] ?? [];
+        const avg  = atts.length ? Math.round(atts.reduce((s: number, a: any) => s + a.percent, 0) / atts.length) : 0;
+        const status = getStatus(e);
+        const isOpen = expanded === e.id;
+        return (
+          <div key={e.id} style={{ background: 'var(--bg-card)', border: '0.5px solid var(--border-card)', borderRadius: 14, overflow: 'hidden' }}>
+            <div onClick={() => setExpanded(isOpen ? null : e.id)} style={{ padding: '13px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)', marginBottom: 3 }}>
+                  {(DIFF as any)[e.difficulty] ?? '📋'} {groupMap[e.groupId] ?? 'Qrup'} · {e.topicIds?.length ?? 0} mövzu
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                  {fmtDate(e.startDate)} → {fmtDate(e.endDate)} · {e.timeLimit} dəq
+                </div>
+              </div>
+              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'monospace', color: avg >= 70 ? '#00C9A7' : avg >= 50 ? '#4F87FF' : '#F4A261' }}>
+                  {atts.length ? `${avg}%` : '—'}
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{atts.length} iştirakçı</div>
+              </div>
+              <span style={{ color: 'var(--text-3)', fontSize: 13, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>▾</span>
+            </div>
+            {isOpen && atts.length > 0 && (
+              <div style={{ borderTop: '0.5px solid var(--border-card)', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 7 }}>
+                {[...atts].sort((a, b) => b.percent - a.percent).map((att: any, i: number) => (
+                  <div key={att.id ?? i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 9, background: 'rgba(255,255,255,0.03)' }}>
+                    <span style={{ fontSize: 11, color: 'var(--text-3)', width: 20, textAlign: 'center', fontWeight: 700 }}>#{i + 1}</span>
+                    <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: 'var(--text-1)' }}>{att.studentName || 'Şagird'}</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{att.correct}/{att.total}</span>
+                    <span style={{ fontSize: 14, fontWeight: 800, fontFamily: 'monospace', color: att.percent >= 70 ? '#00C9A7' : att.percent >= 50 ? '#4F87FF' : '#F4A261' }}>
+                      {att.percent}%
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {isOpen && atts.length === 0 && (
+              <div style={{ borderTop: '0.5px solid var(--border-card)', padding: '16px', textAlign: 'center', fontSize: 12, color: 'var(--text-3)' }}>
+                {status === 'ended' ? 'Heç bir şagird iştirak etməyib' : 'İmtahan hələ başlamamışdır'}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Tapşırıq Tab ──────────────────────────────────────────────────────────────
+function TapshiriqTab({ groups, groupMap }: { groups: any[]; groupMap: Record<string, string> }) {
+  const [selGroup, setSelGroup] = useState<string>('all');
+  const [hwData,   setHwData]   = useState<any[]>([]);
+  const [loading,  setLoading]  = useState(true);
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  useEffect(() => {
+    const groupIds = groups.map((g: any) => g.id);
+    Promise.all(groupIds.map((gid: string) => apiGetGroupHomeworkResults(gid).catch(() => [])))
+      .then(results => {
+        const all: any[] = results.flatMap((r: any[], i: number) => r.map((hw: any) => ({ ...hw, _groupId: groupIds[i] })));
+        setHwData(all);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [groups]);
+
+  const filtered = selGroup === 'all' ? hwData : hwData.filter(h => h._groupId === selGroup);
+
+  if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><span className="spinner" style={{ width: 24, height: 24 }} /></div>;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Group filter */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {[{ id: 'all', name: 'Hamısı' }, ...groups].map((g: any) => (
+          <button key={g.id} onClick={() => setSelGroup(g.id)}
+            style={{
+              padding: '5px 12px', borderRadius: 8, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+              border: `0.5px solid ${selGroup === g.id ? '#4F87FF' : 'var(--border-card)'}`,
+              background: selGroup === g.id ? 'rgba(79,135,255,0.1)' : 'transparent',
+              color: selGroup === g.id ? '#4F87FF' : 'var(--text-3)',
+            }}>{g.name}</button>
+        ))}
       </div>
 
-      {/* Weak topics for this student */}
-      <div className="card" style={{padding:'16px'}}>
-        <div style={{fontSize:12,fontWeight:700,color:'var(--text-1)',marginBottom:12}}>
-          ❌ Zəif mövzular
+      {filtered.length === 0 ? (
+        <div className="card" style={{ textAlign: 'center', padding: '36px 24px' }}>
+          <div style={{ fontSize: 38, marginBottom: 10 }}>📖</div>
+          <div style={{ fontSize: 13, color: 'var(--text-3)' }}>Ev tapşırığı yoxdur</div>
         </div>
-        {subjects.filter(s=>s.avg<60).length===0 ? (
-          <div style={{fontSize:12,color:'#00C9A7',textAlign:'center',padding:'8px 0'}}>
-            ✓ Bütün fənlərdə yaxşı nəticə!
-          </div>
-        ) : (
-          subjects.filter(s=>s.avg<60).map(s=>{
-            const wt = WEAK_TOPICS[s.subject]?.[0] ?? '—';
-            return (
-              <div key={s.subject} style={{
-                display:'flex',justifyContent:'space-between',alignItems:'center',
-                padding:'8px 10px',borderRadius:9,marginBottom:6,
-                background:'rgba(226,75,74,0.06)',border:'0.5px solid rgba(226,75,74,0.2)',
-              }}>
-                <div>
-                  <div style={{fontSize:11,fontWeight:600,color:'var(--text-1)'}}>{s.subject}</div>
-                  <div style={{fontSize:10,color:'var(--text-3)'}}>Ən zəif: {wt}</div>
+      ) : (
+        filtered.map((hw: any) => {
+          const isOpen = expanded === hw.id;
+          return (
+            <div key={hw.id} style={{ background: 'var(--bg-card)', border: '0.5px solid var(--border-card)', borderRadius: 14, overflow: 'hidden' }}>
+              <div onClick={() => setExpanded(isOpen ? null : hw.id)} style={{ padding: '13px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)', marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {hw.topicTitle || hw.topicId}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                    {groupMap[hw._groupId] ?? groupMap[hw.groupId] ?? 'Qrup'} · Tekrar: {hw.repeatLimit}
+                    {hw.dueDate ? ` · Son: ${new Date(hw.dueDate).toLocaleDateString('az-AZ')}` : ''}
+                  </div>
                 </div>
-                <span style={{
-                  fontFamily:"'Lexend Deca',sans-serif",fontWeight:800,fontSize:14,color:'#E24B4A',
-                }}>{s.avg}%</span>
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'monospace', color: hw.avgPercent >= 70 ? '#00C9A7' : hw.avgPercent >= 50 ? '#4F87FF' : '#F4A261' }}>
+                    {hw.attemptCount ? `${hw.avgPercent}%` : '—'}
+                  </div>
+                  <div style={{ fontSize: 10, color: 'var(--text-3)' }}>{hw.participantCount} şagird</div>
+                </div>
+                <span style={{ color: 'var(--text-3)', fontSize: 13, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>▾</span>
               </div>
-            );
-          })
-        )}
-      </div>
+              {isOpen && (
+                <div style={{ borderTop: '0.5px solid var(--border-card)', padding: '10px 16px', fontSize: 12, color: 'var(--text-3)' }}>
+                  Cəmi {hw.attemptCount} cəhd · {hw.participantCount} fərqli şagird iştirak etdi
+                  {hw.avgPercent > 0 && (
+                    <div style={{ marginTop: 8 }}>
+                      <div style={{ marginBottom: 5, display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Ortalama nəticə</span>
+                        <span style={{ fontWeight: 700, color: hw.avgPercent >= 70 ? '#00C9A7' : hw.avgPercent >= 50 ? '#4F87FF' : '#F4A261' }}>{hw.avgPercent}%</span>
+                      </div>
+                      <div style={{ height: 6, borderRadius: 999, background: 'rgba(255,255,255,0.07)' }}>
+                        <div style={{ height: '100%', borderRadius: 999, width: `${hw.avgPercent}%`, background: hw.avgPercent >= 70 ? '#00C9A7' : hw.avgPercent >= 50 ? '#4F87FF' : '#F4A261' }} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })
+      )}
     </div>
   );
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function TeacherStudentStats() {
-  const [tab,     setTab]     = useState('overview');
-  const [period,  setPeriod]  = useState('weekly');
-  const [groups,  setGroups]  = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selStudent, setSelStudent] = useState(null);
+  const [tab,            setTab]            = useState('overview');
+  const [period,         setPeriod]         = useState('weekly');
+  const [groups,         setGroups]         = useState<any[]>([]);
+  const [loading,        setLoading]        = useState(true);
+  const [selStudent,     setSelStudent]     = useState<any>(null);
+  const [teacherProfile, setTeacherProfile] = useState<any>(null);
+  const groupMap = useMemo(() => Object.fromEntries(groups.map((g: any) => [g.id, g.name])), [groups]);
+  const teacherSubjects: string[] = teacherProfile?.subjects ?? [];
+
+  useEffect(() => {
+    apiGetProfile().then(p => setTeacherProfile(p)).catch(() => {})
+  }, [])
 
   useEffect(()=>{
     apiGetMyGroups()
@@ -779,7 +1180,7 @@ export default function TeacherStudentStats() {
         <Sidebar/><Topbar/><BottomNav/>
         <main className="main-content">
           <div className="page-inner">
-            <StudentDetailView student={selStudent} onBack={()=>setSelStudent(null)}/>
+            <StudentDetailView student={selStudent} onBack={()=>setSelStudent(null)} teacherSubjects={teacherSubjects}/>
           </div>
         </main>
       </div>
@@ -817,15 +1218,15 @@ export default function TeacherStudentStats() {
             initial={{opacity:0,y:8}} animate={{opacity:1,y:0}}
             transition={{...SPRING,delay:0.06}}
             style={{
-              display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:0,
+              display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:0,
               background:'var(--bg-card)',border:'0.5px solid var(--border-card)',
               borderRadius:14,padding:4,
             }}
           >
             {TABS.map(t=>(
               <button key={t.key} onClick={()=>setTab(t.key)} style={{
-                padding:'9px 4px',borderRadius:10,border:'none',
-                fontSize:11,fontWeight:700,cursor:'pointer',transition:'all 0.2s',
+                padding:'9px 2px',borderRadius:10,border:'none',
+                fontSize:10,fontWeight:700,cursor:'pointer',transition:'all 0.2s',
                 background:tab===t.key?'linear-gradient(135deg,#4F87FF,#6C63FF)':'transparent',
                 color:tab===t.key?'#fff':'var(--text-3)',
                 fontFamily:"'Lexend Deca',sans-serif",
@@ -856,10 +1257,11 @@ export default function TeacherStudentStats() {
                 initial={{opacity:0,x:8}} animate={{opacity:1,x:0}} exit={{opacity:0,x:-8}}
                 transition={{duration:0.18}}
               >
-                {tab==='overview'  && <OverviewTab  groups={groups} period={period}/>}
-                {tab==='groups'    && <GroupsTab    groups={groups} period={period}/>}
-                {tab==='topics'    && <TopicsTab    groups={groups} period={period}/>}
-                {tab==='students'  && <StudentsTab  groups={groups} onSelect={setSelStudent}/>}
+                {tab==='overview'   && <OverviewTab   groups={groups} period={period}/>}
+                {tab==='groups'     && <GroupsTab     groups={groups} period={period}/>}
+                {tab==='sinaqlar'   && <SinaqlarTab   groupMap={groupMap}/>}
+                {tab==='tapshiriq' && <TapshiriqTab  groups={groups} groupMap={groupMap}/>}
+                {tab==='students'   && <StudentsTab   groups={groups} onSelect={setSelStudent}/>}
               </motion.div>
             </AnimatePresence>
           )}

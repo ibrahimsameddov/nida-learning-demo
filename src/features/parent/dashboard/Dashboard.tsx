@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth }             from '@/features/auth/store/authContext'
 import { apiGetMyChildren, apiGetParentRequests } from '@/lib/api'
 import { SPRING }              from '@/lib/motion'
+import { ParentDashboardSkeleton } from '@/components/ui/Skeleton'
 
 const COLOR = '#F4A261'
 
@@ -167,9 +168,7 @@ export default function ParentDashboard() {
       </div>
 
       {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
-          <span className="spinner" style={{ width: 28, height: 28 }} />
-        </div>
+        <ParentDashboardSkeleton />
 
       ) : children.length === 0 ? (
         <div style={{ background: 'var(--bg-card)', border: '0.5px solid var(--border-card)', borderRadius: 20, padding: '44px 24px', textAlign: 'center' }}>
@@ -321,9 +320,12 @@ export default function ParentDashboard() {
                   Yaxınlaşan Tapşırıqlar
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {upcoming.map((task: any) => (
-                    <div
+                  {upcoming.map((task: any, i: number) => (
+                    <motion.div
                       key={task.id}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.07, ...SPRING }}
                       style={{
                         background: 'var(--bg-card)',
                         border: `0.5px solid ${task.urgent ? 'rgba(255,77,109,0.25)' : 'var(--border-card)'}`,
@@ -348,7 +350,7 @@ export default function ParentDashboard() {
                         </div>
                         <div style={{ fontSize: 9, color: 'var(--text-3)' }}>qalıb</div>
                       </div>
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
               </div>

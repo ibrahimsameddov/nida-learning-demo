@@ -6,6 +6,8 @@ import {
   apiGetMyGroups, apiGetSentPermissions, apiRevokePermission,
   apiGetMyNotifications, apiMarkNotificationRead, apiMarkAllNotificationsRead,
   apiGetIncomingParentMsgs, apiGetStudentProfile, apiReplyAsTeacher,
+  apiGetPermittedStudents, apiGetStudentProfiles, apiGetParentUidsByStudentUid,
+  apiTeacherMessageParent, apiTeacherSendDirectMessage,
 } from '@/lib/api'
 import { dbGetSentMessages, dbSendMessage } from '@/lib/db'
 
@@ -538,22 +540,72 @@ function SystemTab({ notifications, setNotifications }: any) {
 // ─── Compose Modal ────────────────────────────────────────────────────────────
 
 function ComposeModal({ groups, onClose, onSent }: any) {
-  const [mode, setMode] = useState<'direct' | 'group'>('direct')
-  const [to, setTo] = useState('')
-  const [text, setText] = useState('')
-  const [sending, setSending] = useState(false)
-  const [err, setErr] = useState('')
+  const [mode,          setMode]          = useState<'direct' | 'group' | 'parent'>('direct')
+  const [to,            setTo]            = useState('')
+  const [text,          setText]          = useState('')
+  const [sending,       setSending]       = useState(false)
+  const [err,           setErr]           = useState('')
+  const [permStudents,  setPermStudents]  = useState<any[]>([])
+  const [selStudent,    setSelStudent]    = useState<any>(null)
+  const [parentOpts,    setParentOpts]    = useState<any[]>([])
+  const [selParent,     setSelParent]     = useState<any>(null)
+  const [loadingPerm,   setLoadingPerm]   = useState(false)
+
+  useEffect(() => {
+    if (mode !== 'parent') return
+    setLoadingPerm(true)
+    apiGetPermittedStudents()
+      .then(async (perms: any[]) => {
+        const uids = [...new Set(perms.map((p: any) => p.studentUid).filter(Boolean))]
+        if (!uids.length) { setPermStudents([]); return }
+        const profiles = await apiGetStudentProfiles(uids).catch(() => [])
+        setPermStudents((Array.isArray(profiles) ? profiles : []).filter(Boolean).map((p: any) => ({ id: p.id, name: p.fullName || 'Şagird', uniqueId: p.uniqueId })))
+      })
+      .catch(() => {})
+      .finally(() => setLoadingPerm(false))
+  }, [mode])
+
+  useEffect(() => {
+    if (!selStudent) { setParentOpts([]); setSelParent(null); return }
+    apiGetParentUidsByStudentUid(selStudent.id)
+      .then((parents: any[]) => {
+        setParentOpts(parents)
+        setSelParent(parents[0] ?? null)
+      })
+      .catch(() => setParentOpts([]))
+  }, [selStudent])
 
   const handleSend = async () => {
-    const t = text.trim(), r = to.trim()
-    if (!t || !r) { setErr('Alıcı və mesaj boş ola bilməz'); return }
+    const t = text.trim()
     setSending(true); setErr('')
     try {
-      const label = mode === 'group' ? (groups.find((g: any) => g.id === r)?.name ?? r) : r
-      const msg = await dbSendMessage({ to: r, toLabel: label, mode, text: t })
-      onSent(msg)
-    } catch { setErr('Göndərmə xətası baş verdi') } finally { setSending(false) }
+      if (mode === 'parent') {
+        if (!selParent || !selStudent) { setErr('Valideyn seçin'); setSending(false); return }
+        if (!t) { setErr('Mesaj boş ola bilməz'); setSending(false); return }
+        await apiTeacherMessageParent(selParent.uid, selStudent.id, t)
+        onSent({ type: 'parent' })
+      } else if (mode === 'direct') {
+        const r = to.trim()
+        if (!t || !r) { setErr('Alıcı və mesaj boş ola bilməz'); setSending(false); return }
+        const msg = await apiTeacherSendDirectMessage(r, t)
+        onSent(msg)
+      } else {
+        const r = to.trim()
+        if (!t || !r) { setErr('Alıcı və mesaj boş ola bilməz'); setSending(false); return }
+        const label = groups.find((g: any) => g.id === r)?.name ?? r
+        const msg = await dbSendMessage({ to: r, toLabel: label, mode, text: t })
+        onSent(msg)
+      }
+    } catch (e: any) {
+      setErr(e?.message === 'Şagird tapılmadı' ? 'Şagird tapılmadı — ID və ya email yoxlayın' : 'Göndərmə xətası baş verdi')
+    } finally { setSending(false) }
   }
+
+  const MODES = [
+    { key: 'direct', icon: '👤', label: 'Şagird' },
+    { key: 'group',  icon: '👥', label: 'Qrup'   },
+    { key: 'parent', icon: '👨‍👩‍👧', label: 'Valideyn' },
+  ]
 
   return (
     <div
@@ -572,32 +624,66 @@ function ComposeModal({ groups, onClose, onSent }: any) {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-            {(['direct', 'group'] as const).map(m => (
-              <button key={m} onClick={() => { setMode(m); setTo('') }} style={{
-                padding: '9px', borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s',
-                background: mode === m ? 'rgba(79,135,255,0.14)' : 'rgba(255,255,255,0.04)',
-                border: mode === m ? '0.5px solid rgba(79,135,255,0.3)' : '0.5px solid var(--border)',
-                color: mode === m ? '#4F87FF' : 'var(--text-3)',
+          {/* Mode tabs */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
+            {MODES.map(m => (
+              <button key={m.key} onClick={() => { setMode(m.key as any); setTo(''); setSelStudent(null); setSelParent(null) }} style={{
+                padding: '9px 4px', borderRadius: 10, fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s',
+                background: mode === m.key ? 'rgba(79,135,255,0.14)' : 'rgba(255,255,255,0.04)',
+                border: mode === m.key ? '0.5px solid rgba(79,135,255,0.3)' : '0.5px solid var(--border)',
+                color: mode === m.key ? '#4F87FF' : 'var(--text-3)',
                 fontFamily: "'Lexend Deca', sans-serif",
-              }}>{m === 'direct' ? '👤 Fərdi şagird' : '👥 Qrupa göndər'}</button>
+              }}>{m.icon} {m.label}</button>
             ))}
           </div>
 
-          <div>
-            <label style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 6 }}>
-              {mode === 'direct' ? 'Şagird ID-si və ya email' : 'Qrup'}
-            </label>
-            {mode === 'direct' ? (
+          {/* Recipient selector */}
+          {mode === 'direct' && (
+            <div>
+              <label style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 6 }}>Şagird ID-si və ya email</label>
               <input className="input" placeholder="ŞAG-XXXXXX və ya email@..." value={to} onChange={e => setTo(e.target.value)} />
-            ) : (
+            </div>
+          )}
+          {mode === 'group' && (
+            <div>
+              <label style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 6 }}>Qrup</label>
               <select className="input" value={to} onChange={e => setTo(e.target.value)} style={{ appearance: 'none' }}>
                 <option value="">Qrup seçin...</option>
-                {groups.map((g: any) => <option key={g.id} value={g.id}>{g.name} — {g.subject} ({g.studentUids?.length ?? 0} şagird)</option>)}
+                {groups.map((g: any) => <option key={g.id} value={g.id}>{g.name} — {g.subject}</option>)}
               </select>
-            )}
-          </div>
+            </div>
+          )}
+          {mode === 'parent' && (
+            <>
+              <div>
+                <label style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 6 }}>Şagird (icazə verilmiş)</label>
+                {loadingPerm ? (
+                  <div style={{ textAlign: 'center', padding: 10 }}><span className="spinner" style={{ width: 18, height: 18 }} /></div>
+                ) : permStudents.length === 0 ? (
+                  <div style={{ fontSize: 12, color: 'var(--text-3)', padding: '8px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.04)' }}>İcazə verilmiş şagird yoxdur</div>
+                ) : (
+                  <select className="input" value={selStudent?.id ?? ''} onChange={e => setSelStudent(permStudents.find((s: any) => s.id === e.target.value) ?? null)} style={{ appearance: 'none' }}>
+                    <option value="">Şagird seçin...</option>
+                    {permStudents.map((s: any) => <option key={s.id} value={s.id}>{s.name}{s.uniqueId ? ` (${s.uniqueId})` : ''}</option>)}
+                  </select>
+                )}
+              </div>
+              {selStudent && (
+                <div>
+                  <label style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 6 }}>Valideyn</label>
+                  {parentOpts.length === 0 ? (
+                    <div style={{ fontSize: 12, color: 'var(--text-3)', padding: '8px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.04)' }}>Bu şagirdin qeydiyyatlı valideyni yoxdur</div>
+                  ) : (
+                    <select className="input" value={selParent?.uid ?? ''} onChange={e => setSelParent(parentOpts.find((p: any) => p.uid === e.target.value) ?? null)} style={{ appearance: 'none' }}>
+                      {parentOpts.map((p: any) => <option key={p.uid} value={p.uid}>{p.profile?.fullName || `Valideyn ···${p.uid.slice(-4)}`}</option>)}
+                    </select>
+                  )}
+                </div>
+              )}
+            </>
+          )}
 
+          {/* Message */}
           <div>
             <label style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 6 }}>Mesaj</label>
             <textarea
@@ -614,12 +700,12 @@ function ComposeModal({ groups, onClose, onSent }: any) {
 
           <button
             onClick={handleSend}
-            disabled={sending || !text.trim() || !to.trim()}
+            disabled={sending}
             style={{
               padding: '13px', borderRadius: 12, fontWeight: 800, fontSize: 14,
-              background: sending || !text.trim() || !to.trim() ? 'rgba(79,135,255,0.3)' : 'linear-gradient(135deg, #4F87FF, #6C63FF)',
+              background: sending ? 'rgba(79,135,255,0.3)' : 'linear-gradient(135deg, #4F87FF, #6C63FF)',
               border: 'none', color: '#fff', fontFamily: "'Lexend Deca', sans-serif",
-              cursor: sending || !text.trim() || !to.trim() ? 'not-allowed' : 'pointer',
+              cursor: sending ? 'not-allowed' : 'pointer',
               boxShadow: '0 4px 20px rgba(79,135,255,0.3)',
             }}
           >{sending ? 'Göndərilir...' : '→  Göndər'}</button>

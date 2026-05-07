@@ -20,16 +20,17 @@ export enum Group {
 }
 
 export enum Subject {
-  Azerbaijani = 'azerbaijani',
-  Math        = 'math',
-  English     = 'english',
-  Russian     = 'russian',
-  Physics     = 'physics',
-  Chemistry   = 'chemistry',
-  Biology     = 'biology',
-  History     = 'history',
-  Geography   = 'geography',
-  Literature  = 'literature',
+  Azerbaijani  = 'azerbaijani',
+  Math         = 'math',
+  English      = 'english',
+  Russian      = 'russian',
+  Physics      = 'physics',
+  Chemistry    = 'chemistry',
+  Biology      = 'biology',
+  History      = 'history',
+  Geography    = 'geography',
+  Literature   = 'literature',
+  Informatics  = 'informatics',
 }
 
 export enum StudentStatus {

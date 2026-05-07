@@ -1,6 +1,12 @@
 // @ts-nocheck
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useAuthStore } from '@/stores/authStore'
+
+const FREE_STUDENT_LIMIT = 5
+const PLUS_STUDENT_LIMIT = 100
+const NIDA_PLUS_PLAN     = 'nida_plus'
+
 import {
   apiGetMyGroups, apiCreateGroup, apiGetStudentProfiles,
   apiGetStudentStatsByUid, apiGetStudentResultsByUid,
@@ -181,14 +187,15 @@ function CreateGroupModal({ onClose, onCreated }: any) {
 }
 
 // ── AddStudentModal ───────────────────────────────────────────────────────────
-function AddStudentModal({ group, approvedPerms, onClose, onAdded }: any) {
+function AddStudentModal({ group, approvedPerms, totalStudents, studentLimit, isNidaPlus, onClose, onAdded }: any) {
   const [tab,     setTab]     = useState<'id' | 'requests'>('id')
   const [idInput, setIdInput] = useState('')
   const [found,   setFound]   = useState<any>(null)
   const [searching, setSearching] = useState(false)
   const [adding,    setAdding]    = useState<string | null>(null)
 
-  const memberUids = new Set(group.studentUids ?? [])
+  const memberUids   = new Set(group.studentUids ?? [])
+  const limitReached = totalStudents >= studentLimit
 
   const canAdd = approvedPerms.filter((p: any) => {
     const sid = p.studentUid ?? p.receiverUid ?? p.id
@@ -212,6 +219,10 @@ function AddStudentModal({ group, approvedPerms, onClose, onAdded }: any) {
 
   const addByUid = async (studentUid: string, name: string) => {
     if (memberUids.has(studentUid)) { toast.error('Bu şagird artıq qrupdadır.'); return }
+    if (!memberUids.has(studentUid) && limitReached) {
+      toast.error(`Limit: ${studentLimit} şagird. Nida+ ilə 100-ə qədər şagird əlavə et.`)
+      return
+    }
     setAdding(studentUid)
     try {
       await apiInviteToGroup(group.id, studentUid)
@@ -243,7 +254,7 @@ function AddStudentModal({ group, approvedPerms, onClose, onAdded }: any) {
           maxHeight: '80dvh', display: 'flex', flexDirection: 'column',
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <div>
             <div style={{ fontFamily: "'Lexend Deca', sans-serif", fontWeight: 800, fontSize: 15, color: 'var(--text-1)' }}>
               Şagird Əlavə Et
@@ -251,6 +262,22 @@ function AddStudentModal({ group, approvedPerms, onClose, onAdded }: any) {
             <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>{group.name}</div>
           </div>
           <CloseBtn onClick={onClose} />
+        </div>
+
+        {/* Limit banner */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '8px 12px', borderRadius: 10, marginBottom: 14,
+          background: limitReached ? 'rgba(255,77,109,0.08)' : 'rgba(79,135,255,0.06)',
+          border: `0.5px solid ${limitReached ? 'rgba(255,77,109,0.3)' : 'rgba(79,135,255,0.2)'}`,
+        }}>
+          <span style={{ fontSize: 14 }}>{limitReached ? '🔒' : '👥'}</span>
+          <span style={{ fontSize: 12, color: limitReached ? 'var(--danger)' : 'var(--text-3)', flex: 1 }}>
+            {totalStudents}/{studentLimit} şagird
+            {!isNidaPlus && !limitReached && <span style={{ color: 'var(--text-3)' }}> — Nida+ ilə 100-ə qədər</span>}
+            {limitReached && <span style={{ fontWeight: 700 }}> — limit dolub</span>}
+          </span>
+          {isNidaPlus && <span style={{ fontSize: 10, fontWeight: 700, color: '#F4A261' }}>⭐ Nida+</span>}
         </div>
 
         {/* Tab */}
@@ -622,7 +649,7 @@ function GroupStatsBar({ studentProfiles }: any) {
 }
 
 // ── GroupDetailView ───────────────────────────────────────────────────────────
-function GroupDetailView({ group, onBack, onRefresh }: any) {
+function GroupDetailView({ group, totalStudents, studentLimit, isNidaPlus, onBack, onRefresh }: any) {
   const [profiles,   setProfiles]   = useState<any[]>([])
   const [loadingP,   setLoadingP]   = useState(true)
   const [openUid,    setOpenUid]    = useState<string | null>(null)
@@ -656,6 +683,9 @@ function GroupDetailView({ group, onBack, onRefresh }: any) {
           <AddStudentModal
             group={group}
             approvedPerms={approvedP}
+            totalStudents={totalStudents}
+            studentLimit={studentLimit}
+            isNidaPlus={isNidaPlus}
             onClose={() => setShowAdd(false)}
             onAdded={() => { onRefresh(); setShowAdd(false) }}
           />
@@ -816,11 +846,21 @@ function GroupDetailView({ group, onBack, onRefresh }: any) {
 
 // ── Main GroupsListView ───────────────────────────────────────────────────────
 export default function TeacherGroups() {
+  const user          = useAuthStore(s => s.user)
+  const isNidaPlus    = (user as any)?.plan === NIDA_PLUS_PLAN
+  const studentLimit  = isNidaPlus ? PLUS_STUDENT_LIMIT : FREE_STUDENT_LIMIT
+
   const [groups,      setGroups]      = useState<any[]>([])
   const [loading,     setLoading]     = useState(true)
   const [activeGroup, setActiveGroup] = useState<string | null>(null)
   const [showCreate,  setShowCreate]  = useState(false)
   const [approvedCnt, setApprovedCnt] = useState(0)
+
+  const totalStudents = useMemo(() => {
+    const allUids = new Set<string>()
+    groups.forEach(g => (g.studentUids ?? []).forEach((uid: string) => allUids.add(uid)))
+    return allUids.size
+  }, [groups])
 
   const fetchGroups = useCallback(async () => {
     setLoading(true)
@@ -847,6 +887,9 @@ export default function TeacherGroups() {
     return (
       <GroupDetailView
         group={activeGroupObj}
+        totalStudents={totalStudents}
+        studentLimit={studentLimit}
+        isNidaPlus={isNidaPlus}
         onBack={() => setActiveGroup(null)}
         onRefresh={() => { fetchGroups(); setActiveGroup(null) }}
       />

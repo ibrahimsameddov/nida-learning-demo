@@ -3,19 +3,19 @@ import { useAuth } from "@/features/auth/store/authContext";
 import { Role }    from "@/types/models";
 
 const STUDENT_NAV = [
-  { path: "/",               end: true,  icon: "🏠", label: "Əsas"   },
-  { path: "/subjects",       end: false, icon: "📚", label: "Fənlər" },
-  { path: "/statistics",     end: false, icon: "📊", label: "Stat"   },
-  { path: "/messages",       end: false, icon: "💬", label: "Mesaj"  },
-  { path: "/profile",        end: false, icon: "👤", label: "Profil" },
+  { path: "/",               end: true,  icon: "🏠", label: "Əsas"     },
+  { path: "/subjects",       end: false, icon: "📚", label: "Fənlər"   },
+  { path: "/homework",       end: false, icon: "📖", label: "Tapşırıq" },
+  { path: "/statistics",     end: false, icon: "📊", label: "Stat"     },
+  { path: "/profile",        end: false, icon: "👤", label: "Profil"   },
 ];
 
 const TEACHER_NAV = [
-  { path: "/teacher",           end: true,  icon: "🏠", label: "Əsas"    },
-  { path: "/teacher/groups",    end: false, icon: "📁", label: "Qruplar" },
-  { path: "/teacher/exams",     end: false, icon: "📋", label: "İmtahan" },
-  { path: "/teacher/analytics", end: false, icon: "📊", label: "Analitika" },
-  { path: "/teacher/messages",  end: false, icon: "💬", label: "Mesaj"   },
+  { path: "/teacher",           end: true,  icon: "🏠", label: "Əsas"     },
+  { path: "/teacher/groups",    end: false, icon: "📁", label: "Qruplar"  },
+  { path: "/teacher/homework",  end: false, icon: "📖", label: "Tapşırıq" },
+  { path: "/teacher/exams",     end: false, icon: "📋", label: "İmtahan"  },
+  { path: "/teacher/analytics", end: false, icon: "📊", label: "Analitika"},
 ];
 
 const PARENT_NAV = [

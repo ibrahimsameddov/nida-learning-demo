@@ -70,6 +70,7 @@ export function useLogin() {
           city:           (profile?.city as string)   ?? '',
           school:         (profile?.school as string) ?? '',
           foreignLang:    (profile?.foreignLang as Subject) ?? Subject.English,
+          specialtyGroup: (profile?.specialtyGroup as string) ?? '',
           plan:           (profile?.plan as string) ?? 'free',
           streakDays:     0,
           totalQuestions: 0,

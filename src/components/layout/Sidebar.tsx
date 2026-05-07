@@ -7,6 +7,7 @@ import Avatar from "@/components/ui/Avatar";
 const STUDENT_NAV = [
   { path: "/",               icon: "🏠", label: "Ana Səhifə"   },
   { path: "/subjects",       icon: "📚", label: "Fənlər"       },
+  { path: "/homework",       icon: "📖", label: "Ev Tapşırığı" },
   { path: "/exams",          icon: "📝", label: "İmtahanlar"   },
   { path: "/statistics",     icon: "📊", label: "Statistika"   },
   { path: "/messages",       icon: "💬", label: "Mesajlar"     },
@@ -15,14 +16,15 @@ const STUDENT_NAV = [
 ];
 
 const TEACHER_NAV = [
-  { path: "/teacher",           icon: "🏠", label: "Ana Səhifə" },
-  { path: "/teacher/students",  icon: "👨‍🎓", label: "Şagirdlər" },
-  { path: "/teacher/groups",    icon: "👥", label: "Qruplar"    },
-  { path: "/teacher/exams",     icon: "📋", label: "İmtahanlar" },
-  { path: "/teacher/tasks",     icon: "📝", label: "Tapşırıqlar" },
-  { path: "/teacher/analytics", icon: "📊", label: "Analitika"  },
-  { path: "/teacher/messages",  icon: "💬", label: "Mesajlar"   },
-  { path: "/profile",           icon: "👤", label: "Profil"     },
+  { path: "/teacher",            icon: "🏠", label: "Ana Səhifə" },
+  { path: "/teacher/students",   icon: "👨‍🎓", label: "Şagirdlər" },
+  { path: "/teacher/groups",     icon: "👥", label: "Qruplar"    },
+  { path: "/teacher/homework",   icon: "📖", label: "Ev Tapşırığı" },
+  { path: "/teacher/exams",      icon: "📋", label: "İmtahanlar" },
+  { path: "/teacher/tasks",      icon: "📝", label: "Tapşırıqlar" },
+  { path: "/teacher/analytics",  icon: "📊", label: "Analitika"  },
+  { path: "/teacher/messages",   icon: "💬", label: "Mesajlar"   },
+  { path: "/profile",            icon: "👤", label: "Profil"     },
 ];
 
 const PARENT_NAV = [

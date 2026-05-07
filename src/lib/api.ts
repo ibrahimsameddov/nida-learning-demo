@@ -18,6 +18,18 @@ import {
   dbGetAllParentMessages, dbGetParentTeacherMessages, dbSendParentTeacherMessage,
   dbGetExamsForStudent, dbNotifyExamAssigned, dbGetIncomingParentMessages,
   dbTeacherReplyToParent,
+  dbCreateHomework, dbGetTeacherHomeworks, dbGetGroupHomeworks,
+  dbSaveHomeworkAttempt, dbGetHomeworkAttempts, dbGetMyHomeworkAttempts,
+  dbCreateSinaqExam, dbGetTeacherSinaqExams, dbGetSinaqExamsForStudent,
+  dbSaveSinaqAttempt, dbGetSinaqAttempts, dbGetMySinaqAttempt, dbMarkSinaqSummarySent,
+  dbGetStudentHomeworkAttemptsByUid, dbGetStudentSinaqAttemptsByUid,
+  dbGetChildHomeworkAttempts, dbGetChildSharedExamAttempts,
+  dbGetPermittedStudents, dbShareSinaqWithParents,
+  dbGetParentUidsByStudentUid, dbTeacherMessageParent,
+  dbGetGroupHomeworkResults,
+  dbTeacherSendDirectMessage,
+  dbGetReceivedMessages,
+  dbGetAllMyHomeworkAttempts,
 } from './db'
 
 // Axios instance — gələcəkdə real backend üçün saxlanılır
@@ -106,6 +118,14 @@ export const apiGetMyExams   = ()           => dbGetMyExams()
 export const apiCreateExam   = (data: any)  => dbCreateExam(data)
 export const apiActivateExam = (id: string) => dbActivateExam(id)
 
+// ─── Homeworks ────────────────────────────────────────────────────────────────
+export const apiCreateHomework        = (data: any)    => dbCreateHomework(data)
+export const apiGetTeacherHomeworks   = ()             => dbGetTeacherHomeworks()
+export const apiGetGroupHomeworks     = (gid: string)  => dbGetGroupHomeworks(gid)
+export const apiGetHomeworkAttempts   = (hid: string)  => dbGetHomeworkAttempts(hid)
+export const apiGetMyHomeworkAttempts = (hid: string)  => dbGetMyHomeworkAttempts(hid)
+export const apiSaveHomeworkAttempt   = (data: any)    => dbSaveHomeworkAttempt(data)
+
 // ─── Payment ──────────────────────────────────────────────────────────────────
 export const apiGetBalance        = ()              => dbGetBalance()
 export const apiGetPaymentHistory = ()              => dbGetPaymentHistory()
@@ -129,6 +149,32 @@ export const apiGetGroupMessages           = (groupId: string)                  
 export const apiGetAllParentMessages       = ()                                                     => dbGetAllParentMessages()
 export const apiGetParentTeacherMessages   = (teacherUid: string, childUid: string)                => dbGetParentTeacherMessages(teacherUid, childUid)
 export const apiSendParentTeacherMessage   = (teacherUid: string, childUid: string, text: string)  => dbSendParentTeacherMessage(teacherUid, childUid, text)
+
+// ─── Sinaq İmtahanları ────────────────────────────────────────────────────────
+export const apiCreateSinaqExam              = (data: any)    => dbCreateSinaqExam(data)
+export const apiGetTeacherSinaqExams         = ()             => dbGetTeacherSinaqExams()
+export const apiGetSinaqExamsForStudent      = ()             => dbGetSinaqExamsForStudent()
+export const apiSaveSinaqAttempt             = (data: any)    => dbSaveSinaqAttempt(data)
+export const apiGetSinaqAttempts             = (eid: string)  => dbGetSinaqAttempts(eid)
+export const apiGetMySinaqAttempt            = (eid: string)  => dbGetMySinaqAttempt(eid)
+export const apiMarkSinaqSummarySent         = (eid: string, teacherUid: string, summary: any) =>
+  dbMarkSinaqSummarySent(eid, teacherUid, summary)
+export const apiShareSinaqWithParents        = (eid: string, gid: string) => dbShareSinaqWithParents(eid, gid)
+
+// ─── Cross-user / Permission-gated data ──────────────────────────────────────
+export const apiGetStudentHomeworkAttempts   = (uid: string) => dbGetStudentHomeworkAttemptsByUid(uid)
+export const apiGetStudentSinaqAttempts      = (uid: string) => dbGetStudentSinaqAttemptsByUid(uid)
+export const apiGetChildHomeworkAttempts     = (uid: string) => dbGetChildHomeworkAttempts(uid)
+export const apiGetChildSharedExamAttempts   = (uid: string) => dbGetChildSharedExamAttempts(uid)
+export const apiGetPermittedStudents         = ()             => dbGetPermittedStudents()
+export const apiGetParentUidsByStudentUid    = (uid: string) => dbGetParentUidsByStudentUid(uid)
+export const apiTeacherMessageParent         = (parentUid: string, childUid: string, text: string) =>
+  dbTeacherMessageParent(parentUid, childUid, text)
+export const apiTeacherSendDirectMessage     = (recipientId: string, text: string) =>
+  dbTeacherSendDirectMessage(recipientId, text)
+export const apiGetGroupHomeworkResults      = (gid: string) => dbGetGroupHomeworkResults(gid)
+export const apiGetReceivedMessages          = () => dbGetReceivedMessages()
+export const apiGetAllMyHomeworkAttempts     = () => dbGetAllMyHomeworkAttempts()
 
 // ─── Quiz / Assessment ────────────────────────────────────────────────────────
 export const apiGetAssessmentQuestions = (_sessionId: string) => Promise.resolve([])

@@ -92,11 +92,17 @@
 html { font-size: 16px; -webkit-font-smoothing: antialiased; }
 
 body {
+  font-family:      'Inter', 'Lexend Deca', system-ui, sans-serif;
   background-color: var(--bg-base);
   color:            var(--text-primary);
   transition:       background-color var(--dur-normal) var(--smooth),
                     color var(--dur-fast) var(--smooth);
 }
+
+/* Font utilities */
+.font-heading { font-family: 'Lexend Deca', sans-serif; }
+.font-mono    { font-family: 'JetBrains Mono', monospace; }
+.font-body    { font-family: 'Inter', sans-serif; }
 
 /* ── SCROLL ──────────────────────────────────────── */
 ::-webkit-scrollbar       { width: 4px; height: 4px; }

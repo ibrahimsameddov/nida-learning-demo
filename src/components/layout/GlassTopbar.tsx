@@ -4,6 +4,8 @@ import { useThemeStore } from "@/stores/themeStore";
 import NidaLogo from "@/components/shared/NidaLogo";
 import Avatar from "@/components/ui/Avatar";
 import { Role } from "@/types/models";
+import { XPBar, StreakBadge, BadgeModal, LevelUpModal, useStreakCheck } from "@/components/ui/Gamification";
+import NotificationBell from "@/components/ui/NotificationBell";
 
 const HOME_PATHS = ["/", "/teacher", "/parent"];
 
@@ -24,8 +26,10 @@ export function GlassTopbar({ showBack = false }: TopbarProps) {
   const role      = userProfile?.role;
   const isTeacher = role === Role.Teacher;
   const isDark    = colorMode === "dark";
-
   const displayId = (userProfile as any)?.uniqueId || "";
+
+  // Streak check on mount
+  useStreakCheck();
 
   return (
     <header
@@ -91,8 +95,19 @@ export function GlassTopbar({ showBack = false }: TopbarProps) {
         )}
       </div>
 
-      {/* Right: theme toggle + profile */}
+      {/* Right: XP + Streak + theme toggle + profile */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+        {/* Only show gamification for students */}
+        {role === Role.Student && (
+          <>
+            <StreakBadge />
+            <XPBar />
+          </>
+        )}
+
+        {/* Notification bell — all authenticated roles */}
+        <NotificationBell />
+
         <button
           onClick={toggleColorMode}
           title={isDark ? "İşıqlı rejim" : "Qaranlıq rejim"}
@@ -112,6 +127,10 @@ export function GlassTopbar({ showBack = false }: TopbarProps) {
 
         <Avatar name={name} size="sm" onClick={() => navigate("/profile")} />
       </div>
+
+      {/* Gamification modals — global, rendered once */}
+      <BadgeModal />
+      <LevelUpModal />
     </header>
   );
 }

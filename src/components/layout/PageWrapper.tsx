@@ -1,6 +1,7 @@
 import { Sidebar } from './Sidebar'
 import GlassTopbar from './GlassTopbar'
 import { BottomNav } from './BottomNav'
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 
 interface PageWrapperProps {
   children: React.ReactNode
@@ -13,7 +14,9 @@ export default function PageWrapper({ children, showBack }: PageWrapperProps) {
       <Sidebar />
       <GlassTopbar showBack={showBack} />
       <div className="main-content">
-        {children}
+        <ErrorBoundary>
+          {children}
+        </ErrorBoundary>
       </div>
       <BottomNav />
     </>

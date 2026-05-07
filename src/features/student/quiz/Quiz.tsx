@@ -1,10 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, useBeforeUnload } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useQuizSession, useSubmitAnswer, useCompleteQuiz } from './hooks/useQuiz'
 import { Button } from '../../../components/ui/Button'
 import { DashboardSkeleton } from '../../../components/ui/Skeleton'
 import type { QuizAnswer } from '../../../types/models'
 import { cn } from '../../../lib/utils'
+
+const SHAKE = {
+  animate: { x: [0, -10, 10, -8, 8, -4, 4, 0] },
+  transition: { duration: 0.45, ease: 'easeInOut' },
+}
+const PULSE_GREEN = {
+  animate: { scale: [1, 1.04, 1] },
+  transition: { duration: 0.35, ease: 'easeOut' },
+}
 
 export default function Quiz() {
   const { sessionId }   = useParams<{ sessionId: string }>()
@@ -18,6 +28,7 @@ export default function Quiz() {
   const [elapsed,     setElapsed]     = useState(0)
   const [violations,  setViolations]  = useState(0)
   const [showWarning, setShowWarning] = useState(false)
+  const [answerState, setAnswerState] = useState<'idle' | 'correct' | 'wrong'>('idle')
   const timerRef        = useRef<ReturnType<typeof setInterval> | undefined>(undefined)
   const startRef        = useRef(Date.now())
   const violationsRef   = useRef(0)
@@ -83,6 +94,8 @@ export default function Quiz() {
     if (!selected) return
     setRevealed(true)
     clearInterval(timerRef.current)
+    const isCorrect = currentQ?.options.find(o => o.id === selected)?.isCorrect ?? false
+    setAnswerState(isCorrect ? 'correct' : 'wrong')
   }
 
   const handleNext = async () => {
@@ -99,6 +112,7 @@ export default function Quiz() {
     await submitAnswer.mutateAsync(answer)
     setSelected(null)
     setRevealed(false)
+    setAnswerState('idle')
     setElapsed(0)
     startRef.current = Date.now()
     clearInterval(timerRef.current)
@@ -169,36 +183,46 @@ export default function Quiz() {
 
         {/* Variantlar */}
         <div className="space-y-2.5" role="radiogroup" aria-label="Cavab variantları">
-          {currentQ?.options.map((opt) => {
-            const isSelected = selected === opt.id
-            const isCorrect  = revealed && opt.isCorrect
-            const isWrong    = revealed && isSelected && !opt.isCorrect
+          <AnimatePresence mode="wait">
+            {currentQ?.options.map((opt) => {
+              const isSelected = selected === opt.id
+              const isCorrect  = revealed && opt.isCorrect
+              const isWrong    = revealed && isSelected && !opt.isCorrect
+              const shakeThis  = isWrong && answerState === 'wrong'
+              const pulseThis  = isCorrect && answerState === 'correct'
 
-            return (
-              <button
-                key={opt.id}
-                role="radio"
-                aria-checked={isSelected}
-                onClick={() => handleSelect(opt.id)}
-                disabled={revealed}
-                className={cn(
-                  `w-full text-left px-4 py-3 rounded-md text-sm
-                   border transition-all duration-300 ease-[var(--spring)]
-                   transform-gpu will-change-transform
-                   hover:scale-[1.01] active:scale-[0.98]
-                   focus-visible:outline-none focus-visible:ring-2
-                   focus-visible:ring-[var(--color-primary)]
-                   disabled:cursor-default`,
-                  isCorrect  && 'border-[var(--color-success)] bg-[var(--color-success)]/10 text-[var(--color-success)]',
-                  isWrong    && 'border-[var(--color-danger)]  bg-[var(--color-danger)]/10  text-[var(--color-danger)]',
-                  isSelected && !revealed && 'border-[var(--border-focus)] bg-[var(--color-glow)]',
-                  !isSelected && !isCorrect && !isWrong && 'border-[var(--border-card)] bg-[var(--bg-card)]',
-                )}
-              >
-                {opt.text}
-              </button>
-            )
-          })}
+              return (
+                <motion.button
+                  key={opt.id}
+                  role="radio"
+                  aria-checked={isSelected}
+                  onClick={() => handleSelect(opt.id)}
+                  disabled={revealed}
+                  animate={shakeThis ? SHAKE.animate : pulseThis ? PULSE_GREEN.animate : {}}
+                  transition={shakeThis ? SHAKE.transition : pulseThis ? PULSE_GREEN.transition : {}}
+                  whileHover={!revealed ? { scale: 1.015 } : {}}
+                  whileTap={!revealed ? { scale: 0.97 } : {}}
+                  className={cn(
+                    `w-full text-left px-4 py-3 rounded-md text-sm
+                     border transition-colors duration-300
+                     focus-visible:outline-none focus-visible:ring-2
+                     focus-visible:ring-[var(--color-primary)]
+                     disabled:cursor-default`,
+                    isCorrect  && 'border-[var(--color-success)] bg-[var(--color-success)]/10 text-[var(--color-success)]',
+                    isWrong    && 'border-[var(--color-danger)]  bg-[var(--color-danger)]/10  text-[var(--color-danger)]',
+                    isSelected && !revealed && 'border-[var(--border-focus)] bg-[var(--color-glow)]',
+                    !isSelected && !isCorrect && !isWrong && 'border-[var(--border-card)] bg-[var(--bg-card)]',
+                  )}
+                >
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {isCorrect && <span style={{ fontSize: 16 }}>✓</span>}
+                    {isWrong   && <span style={{ fontSize: 16 }}>✗</span>}
+                    {opt.text}
+                  </span>
+                </motion.button>
+              )
+            })}
+          </AnimatePresence>
         </div>
 
         {/* Açıqlama */}
