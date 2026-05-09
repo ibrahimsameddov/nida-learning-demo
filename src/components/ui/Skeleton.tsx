@@ -9,7 +9,7 @@ export function Skeleton({ className, variant = 'rectangular' }: SkeletonProps) 
   return (
     <div
       className={cn(
-        'animate-pulse bg-[var(--bg-muted)]',
+        'skeleton',
         variant === 'circular'    && 'rounded-full',
         variant === 'text'        && 'rounded h-4',
         variant === 'rectangular' && 'rounded-md',
@@ -76,10 +76,10 @@ const P_ROW_KEYS  = ['pr-a', 'pr-b', 'pr-c']
 
 export function ParentDashboardSkeleton() {
   return (
-    <div className="space-y-4 p-4">
-      <Skeleton className="h-28 w-full" />
+    <div className="space-y-4">
+      <Skeleton className="h-44 w-full rounded-[18px]" />
       <div className="grid grid-cols-2 gap-3">
-        {P_CARD_KEYS.map(k => <Skeleton key={k} className="h-24" />)}
+        {P_CARD_KEYS.map(k => <Skeleton key={k} className="h-20 rounded-xl" />)}
       </div>
       <Skeleton className="h-6 w-32" variant="text" />
       {P_ROW_KEYS.map(k => (
@@ -102,9 +102,9 @@ export function StatisticsSkeleton() {
       <div className="grid grid-cols-3 gap-3">
         {['ss-a', 'ss-b', 'ss-c'].map(k => <Skeleton key={k} className="h-20" />)}
       </div>
-      <Skeleton className="h-48 w-full" /> {/* Radar chart */}
-      <Skeleton className="h-40 w-full" /> {/* Bar chart */}
-      <Skeleton className="h-32 w-full" /> {/* Heatmap */}
+      <Skeleton className="h-48 w-full" />
+      <Skeleton className="h-40 w-full" />
+      <Skeleton className="h-32 w-full" />
     </div>
   )
 }
@@ -161,6 +161,46 @@ export function CardSkeleton({ rows = 3 }: { rows?: number }) {
             <Skeleton className="h-3 w-1/2" variant="text" />
           </div>
         </div>
+      ))}
+    </div>
+  )
+}
+
+// ─── New layout skeletons ─────────────────────────────────────────────────────
+
+export function ConversationListSkeleton() {
+  return (
+    <div className="flex flex-col gap-2 p-2">
+      {[1, 2, 3, 4, 5].map(i => (
+        <div key={i} className="flex gap-3 p-3 items-center">
+          <Skeleton className="w-10 h-10 flex-shrink-0" variant="circular" />
+          <div className="flex-1 space-y-1.5">
+            <Skeleton className="h-3.5 w-32" variant="text" />
+            <Skeleton className="h-3 w-48" variant="text" />
+          </div>
+          <Skeleton className="h-3 w-10" variant="text" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+export function QuizQuestionSkeleton() {
+  return (
+    <div className="flex flex-col gap-4 p-4">
+      <Skeleton className="h-20 rounded-xl" />
+      {[1, 2, 3, 4].map(i => (
+        <Skeleton key={i} className="h-14 rounded-xl" />
+      ))}
+    </div>
+  )
+}
+
+export function StatsCardsSkeleton() {
+  return (
+    <div className="grid grid-cols-2 gap-3 p-4">
+      {[1, 2, 3, 4].map(i => (
+        <Skeleton key={i} className="h-24 rounded-xl" />
       ))}
     </div>
   )

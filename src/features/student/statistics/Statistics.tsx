@@ -1,293 +1,250 @@
-import { useState, useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
-import { apiGetMyStatistics, apiGetMyResults } from '@/lib/api'
-import type { FirestoreStats, FirestoreResult } from '@/types/models'
-import { DashboardSkeleton } from '@/components/ui/Skeleton'
-import { useAuth } from '@/features/auth/store/authContext'
-import {
-  pctColor, RadarChart, SubjectBarChart, AreaTrendChart,
-  ActivityHeatmap, ScoreHistoryChart, AccuracyDonut,
-  ConsistencyMeter, RecentSessionsTable, StrengthWeaknessCard,
-  TopicBestResults,
-} from './charts'
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useStatsData, useERI, useKnowledgeGraph } from '@/hooks/useAnalytics'
 
-const SUBJECT_ICONS: Record<string, string> = {
-  'Riyaziyyat': '📐', 'Azərbaycan dili': '📖', 'İngilis dili': '🌍',
-  'Rus dili': '🇷🇺', 'Fizika': '⚡', 'Kimya': '🧪',
-  'Biologiya': '🧬', 'Tarix': '🏛️', 'Coğrafiya': '🗺️',
-}
-const SUBJECT_ROUTES: Record<string, string> = { 'Riyaziyyat': '/subjects/math' }
-const DEFAULT_STATS: FirestoreStats = {
-  totalTests: 0, averagePercent: 0, bestPercent: 0,
-  streak: 0, currentStreak: 0, subjectStats: [],
-  weeklyProgress: [], dailyProgress: [], recentSessions: [],
-}
-const TIME_TABS = [
-  { id: 'umumi', label: 'Ümumi' },
-  { id: 'heftelik', label: 'Həftəlik' },
-  { id: 'aylig', label: 'Aylıq' },
+import ERIWidget          from './components/ERIWidget'
+import ERIBreakdownCard   from './components/ERIBreakdownCard'
+import ERIGauge           from './components/ERIGauge'
+import PredictivePanel    from './components/PredictivePanel'
+import WeeklyHeatmap      from './components/WeeklyHeatmap'
+import SpacedRepQueue     from './components/SpacedRepQueue'
+import ForgettingCurve    from './components/ForgettingCurve'
+import KnowledgeGraph     from './components/KnowledgeGraph'
+import CognitiveLoadBar   from './components/CognitiveLoadBar'
+import DKIndexCard        from './components/DKIndexCard'
+import LearningProfileCard from './components/LearningProfileCard'
+import CohortChart        from './components/CohortChart'
+import LearningPassport   from './components/LearningPassport'
+import MilestoneTimeline  from './components/MilestoneTimeline'
+
+const TABS = [
+  { id: 'overview',   icon: '📊', label: 'Ümumi'    },
+  { id: 'eri',        icon: '🎯', label: 'ERI'      },
+  { id: 'knowledge',  icon: '🕸️', label: 'Bilik'    },
+  { id: 'spaced',     icon: '🔄', label: 'Təkrar'   },
+  { id: 'cognitive',  icon: '🧠', label: 'Kognitiv' },
+  { id: 'cohort',     icon: '🏆', label: 'Reytinq'  },
+  { id: 'passport',   icon: '📜', label: 'Pasport'  },
 ] as const
-type TabId = typeof TIME_TABS[number]['id']
 
-function getTabPts(stats: FirestoreStats, tab: TabId) {
-  return tab === 'heftelik' ? stats.weeklyProgress.slice(-7)
-       : tab === 'aylig'    ? stats.weeklyProgress.slice(-30)
-       : stats.weeklyProgress
-}
+type TabId = typeof TABS[number]['id']
+const PAGE_SPRING = { type: 'spring', stiffness: 280, damping: 26 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'Lexend Deca,sans-serif', marginBottom: 12 }}>{children}</p>
-}
+// ── Summary strip ──────────────────────────────────────────────────────────────
 
-// ── Subject Detail View ────────────────────────────────────────────────────────
-function SubjectDetail({ subject, results, onBack }: {
-  subject: FirestoreStats['subjectStats'][0]
-  results: FirestoreResult[]
-  onBack: () => void
-}) {
-  const icon  = SUBJECT_ICONS[subject.subject] ?? '📚'
-  const pct   = Math.round(subject.averagePercent)
-  const color = pctColor(pct)
-  const route = SUBJECT_ROUTES[subject.subject] ?? '/subjects'
-  const navigate = useNavigate()
+function SummaryStrip() {
+  const { stats, isLoading } = useStatsData()
+  const { eri }              = useERI()
+  if (isLoading || !stats) return null
+
+  const items = [
+    { label: 'Test',   value: String(stats.totalTests ?? 0),          color: 'var(--primary)' },
+    { label: 'Ort.',   value: `${stats.averagePercent ?? 0}%`,         color: stats.averagePercent >= 75 ? 'var(--success)' : stats.averagePercent >= 55 ? 'var(--warning)' : 'var(--danger)' },
+    { label: 'ERI',    value: String(eri),                             color: 'var(--accent)' },
+    { label: 'Streak', value: `${stats.currentStreak ?? 0}🔥`,        color: 'var(--warning)' },
+  ]
 
   return (
-    <div className="anim-fade-up" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      {/* Back header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button onClick={onBack} style={{
-          padding: '7px 14px', borderRadius: 10, border: '1px solid var(--border-card)',
-          background: 'var(--bg-card)', color: 'var(--text-secondary)', fontSize: 12,
-          fontWeight: 600, cursor: 'pointer',
-        }}>← Geri</button>
-        <div>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'Lexend Deca,sans-serif' }}>
-            {icon} {subject.subject}
-          </h2>
-          <p style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{subject.totalTests} test · Ortalama <span style={{ color, fontWeight: 700 }}>{pct}%</span></p>
+    <div style={{
+      display: 'flex', background: 'var(--bg-elevated)',
+      borderRadius: 14, border: '0.5px solid var(--border-card)',
+      overflow: 'hidden', marginBottom: 14,
+    }}>
+      {items.map((item, i) => (
+        <div key={item.label} style={{
+          flex: 1, textAlign: 'center', padding: '10px 8px',
+          borderRight: i < items.length - 1 ? '0.5px solid var(--border)' : 'none',
+        }}>
+          <p style={{ fontSize: 16, fontWeight: 900, color: item.color, fontFamily: 'var(--font-heading)', lineHeight: 1 }}>{item.value}</p>
+          <p style={{ fontSize: 9, color: 'var(--text-3)', marginTop: 3, fontFamily: 'var(--font-mono)', textTransform: 'uppercase' }}>{item.label}</p>
         </div>
-      </div>
-
-      {/* Topic best results */}
-      <div className="card" style={{ padding: '16px' }}>
-        <SectionTitle>🏆 Mövzu üzrə Ən Yüksək Nəticələr</SectionTitle>
-        <TopicBestResults results={results} subject={subject.subject} />
-      </div>
-
-      {/* Strength/Weakness 4 cards */}
-      <div className="card" style={{ padding: '16px' }}>
-        <SectionTitle>📊 Güclü və Zəif Tərəflər</SectionTitle>
-        <StrengthWeaknessCard results={results} subject={subject.subject} />
-      </div>
-
-      {/* Score history */}
-      <div className="card" style={{ padding: '16px' }}>
-        <SectionTitle>📈 Performans Tarixi</SectionTitle>
-        <ScoreHistoryChart results={results} subject={subject.subject} />
-      </div>
-
-      {/* Accuracy donut + consistency side by side */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <div className="card" style={{ padding: '16px' }}>
-          <SectionTitle>🎯 Cavab Analizi</SectionTitle>
-          <AccuracyDonut results={results} subject={subject.subject} />
-        </div>
-        <div className="card" style={{ padding: '16px' }}>
-          <SectionTitle>⚖️ Sabitlik</SectionTitle>
-          <ConsistencyMeter results={results} subject={subject.subject} />
-          <div style={{ marginTop: 16, padding: '10px', background: 'var(--bg-muted)', borderRadius: 8 }}>
-            <p style={{ fontSize: 10, color: 'var(--text-tertiary)', marginBottom: 2 }}>Toplam Test</p>
-            <p style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'monospace' }}>{subject.totalTests}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Recent sessions */}
-      <div className="card" style={{ padding: '16px' }}>
-        <SectionTitle>🗂️ Son Test Nəticələri</SectionTitle>
-        <RecentSessionsTable results={results} subject={subject.subject} />
-      </div>
-
-      {/* Practice button */}
-      <button onClick={() => navigate(route)} style={{
-        width: '100%', padding: '12px', borderRadius: 12,
-        background: color, border: 'none', color: '#fff',
-        fontSize: 14, fontWeight: 700, cursor: 'pointer',
-        boxShadow: `0 4px 16px ${color}55`,
-      }}>
-        📚 Bu Fəndə Çalış
-      </button>
+      ))}
     </div>
   )
 }
 
-// ── Overview View ──────────────────────────────────────────────────────────────
-function Overview({ stats, results, onSelectSubject }: {
-  stats: FirestoreStats
-  results: FirestoreResult[]
-  onSelectSubject: (s: FirestoreStats['subjectStats'][0]) => void
-}) {
-  const [activeTab, setActiveTab] = useState<TabId>('umumi')
-  const trendPts   = getTabPts(stats, activeTab)
-  const streakVal  = stats.streak ?? stats.currentStreak ?? 0
-  const sortedSubj = useMemo(() => [...(stats.subjectStats ?? [])].sort((a, b) => b.averagePercent - a.averagePercent), [stats.subjectStats])
+// ── Overview tab ───────────────────────────────────────────────────────────────
+
+function OverviewTab() {
+  const { stats } = useStatsData()
+  const sessions  = stats?.recentSessions ?? []
+  const subjects  = stats?.subjectStats   ?? []
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      {/* Header */}
-      <div>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'Lexend Deca,sans-serif', marginBottom: 2 }}>Statistikam</h2>
-        <p style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>{new Date().toLocaleDateString('az-AZ', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-      </div>
+      <ERIWidget />
+      <WeeklyHeatmap data={stats?.dailyProgress ?? []} />
 
-      {/* Time Tabs */}
-      <div style={{ display: 'flex', gap: 4, background: 'var(--bg-muted)', borderRadius: 12, padding: 4 }}>
-        {TIME_TABS.map(tab => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
-            flex: 1, padding: '7px 6px', borderRadius: 9, border: 'none',
-            fontFamily: 'Lexend Deca,sans-serif', fontWeight: 600, fontSize: 11, cursor: 'pointer',
-            transition: 'all 0.25s',
-            background: activeTab === tab.id ? 'var(--color-primary)' : 'transparent',
-            color: activeTab === tab.id ? '#fff' : 'var(--text-tertiary)',
-            boxShadow: activeTab === tab.id ? 'var(--shadow-btn)' : 'none',
-          }}>{tab.label}</button>
-        ))}
-      </div>
-
-      {/* Hero strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8 }}>
-        {[
-          { label: 'Ortalama', value: stats.averagePercent > 0 ? `${Math.round(stats.averagePercent)}%` : '—', color: 'var(--color-success)' },
-          { label: 'Testlər',  value: stats.totalTests > 0 ? String(stats.totalTests) : '—',               color: 'var(--text-primary)' },
-          { label: 'Seriya',   value: streakVal > 0 ? `${streakVal}🔥` : '—',                              color: 'var(--color-warning)' },
-          { label: 'Rekord',   value: stats.bestPercent > 0 ? `${Math.round(stats.bestPercent)}%` : '—',   color: 'var(--color-primary)' },
-        ].map(item => (
-          <div key={item.label} className="card" style={{ padding: '12px 6px', textAlign: 'center' }}>
-            <div style={{ fontSize: 15, fontWeight: 800, color: item.color, fontFamily: 'monospace', lineHeight: 1.1, marginBottom: 3 }}>{item.value}</div>
-            <div style={{ fontSize: 10, color: 'var(--text-tertiary)', fontWeight: 600 }}>{item.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Diagram 1: Radar */}
-      {sortedSubj.length >= 3 && (
-        <div className="card" style={{ padding: '16px' }}>
-          <SectionTitle>🕸️ Fənn Balansı — Radar Diaqramı</SectionTitle>
-          <RadarChart subjects={sortedSubj} />
-        </div>
-      )}
-
-      {/* Diagram 2: Horizontal bar chart */}
-      {sortedSubj.length > 0 && (
-        <div className="card" style={{ padding: '16px' }}>
-          <SectionTitle>📊 Fənn üzrə Müqayisə</SectionTitle>
-          <SubjectBarChart subjects={sortedSubj} />
-        </div>
-      )}
-
-      {/* Diagram 3: Trend area chart */}
-      {trendPts.length >= 2 && (
-        <div className="card" style={{ padding: '16px' }}>
-          <SectionTitle>📈 Performans Trendi</SectionTitle>
-          <AreaTrendChart points={trendPts} />
-        </div>
-      )}
-
-      {/* Diagram 4: Heatmap */}
-      {stats.dailyProgress.length > 0 && (
-        <div className="card" style={{ padding: '16px' }}>
-          <SectionTitle>🔥 Aktivlik Xəritəsi — Son 12 həftə</SectionTitle>
-          <ActivityHeatmap daily={stats.dailyProgress} />
-          <div style={{ display: 'flex', gap: 6, marginTop: 8, justifyContent: 'flex-end' }}>
-            {[
-              { c: 'var(--border-card)', l: 'Yox' },
-              { c: 'var(--color-accent)', l: 'Az' },
-              { c: 'var(--color-mid)', l: 'Orta' },
-              { c: 'var(--color-primary)', l: 'Çox' },
-            ].map(x => (
-              <div key={x.l} style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                <div style={{ width: 10, height: 10, borderRadius: 2, background: x.c }} />
-                <span style={{ fontSize: 9, color: 'var(--text-tertiary)' }}>{x.l}</span>
+      {subjects.length > 0 && (
+        <motion.div className="card" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, ...PAGE_SPRING }}>
+          <p className="card-title" style={{ marginBottom: 16 }}>Fənn Analizi</p>
+          {subjects.map((s, i) => (
+            <div key={s.subject} style={{ marginBottom: i < subjects.length - 1 ? 12 : 0 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+                <span style={{ fontSize: 12, color: 'var(--text-2)', fontWeight: 600 }}>{s.subject}</span>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <span style={{ fontSize: 10, color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>{s.totalTests} test</span>
+                  <span style={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--font-mono)', color: s.averagePercent >= 75 ? 'var(--success)' : s.averagePercent >= 55 ? 'var(--warning)' : 'var(--danger)' }}>{s.averagePercent}%</span>
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
+              <div className="progress" style={{ height: 5 }}>
+                <motion.div className="progress-bar"
+                  initial={{ width: 0 }} animate={{ width: `${s.averagePercent}%` }}
+                  transition={{ duration: 0.9, ease: 'easeOut', delay: i * 0.08 }}
+                  style={{ background: s.averagePercent >= 75 ? 'var(--success)' : s.averagePercent >= 55 ? 'var(--warning)' : 'var(--danger)' }}
+                />
+              </div>
+            </div>
+          ))}
+        </motion.div>
       )}
 
-      {/* Subject cards — click for detail */}
-      {sortedSubj.length > 0 && (
-        <div>
-          <SectionTitle>📚 Fənn üzrə — Ətraflı baxış üçün toxunun</SectionTitle>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {sortedSubj.map(s => {
-              const pct   = Math.round(s.averagePercent)
-              const color = pctColor(pct)
-              const icon  = SUBJECT_ICONS[s.subject] ?? '📚'
-              return (
-                <button key={s.subject} onClick={() => onSelectSubject(s)} className="card spring-hover" style={{
-                  width: '100%', padding: '14px 16px', textAlign: 'left',
-                  border: `1px solid var(--border-card)`, cursor: 'pointer',
-                  display: 'flex', flexDirection: 'column', gap: 8,
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 20 }}>{icon}</span>
-                    <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{s.subject}</span>
-                    <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>{s.totalTests} test</span>
-                    <span style={{ fontSize: 14, fontWeight: 800, color, fontFamily: 'monospace' }}>{pct}%</span>
-                    <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>›</span>
-                  </div>
-                  <div style={{ height: 4, background: 'var(--bg-muted)', borderRadius: 2 }}>
-                    <div style={{ height: '100%', borderRadius: 2, width: `${pct}%`, background: color, transition: 'width 0.8s' }} />
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Empty state */}
-      {stats.totalTests === 0 && (
-        <div className="card" style={{ textAlign: 'center', padding: '40px 24px' }}>
-          <div style={{ fontSize: 48, marginBottom: 12 }}>📊</div>
-          <p style={{ color: 'var(--text-primary)', fontWeight: 700, marginBottom: 6 }}>Hələ statistika yoxdur</p>
-          <p style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>İlk testini tamamladıqdan sonra bütün diaqramlar görünəcək.</p>
-        </div>
+      {sessions.length > 0 && (
+        <motion.div className="card" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15, ...PAGE_SPRING }}>
+          <p className="card-title" style={{ marginBottom: 14 }}>Son Fəaliyyət</p>
+          {sessions.slice(0, 5).map((s, i) => (
+            <div key={i} style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '8px 0', borderBottom: i < 4 && i < sessions.length - 1 ? '0.5px solid var(--border)' : 'none',
+            }}>
+              <div>
+                <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)' }}>{s.subject}</p>
+                <p style={{ fontSize: 10, color: 'var(--text-3)' }}>{s.totalQuestions} sual · {Math.round((s.durationSeconds ?? 0) / 60)} dəq</p>
+              </div>
+              <span style={{ fontSize: 13, fontWeight: 800, fontFamily: 'var(--font-heading)', color: s.accuracy >= 75 ? 'var(--success)' : s.accuracy >= 55 ? 'var(--warning)' : 'var(--danger)' }}>
+                {Math.round(s.accuracy)}%
+              </span>
+            </div>
+          ))}
+        </motion.div>
       )}
     </div>
   )
 }
 
+// ── ERI tab ────────────────────────────────────────────────────────────────────
+
+function ERITab() {
+  const { eri } = useERI()
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <motion.div className="card" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
+        transition={PAGE_SPRING} style={{ padding: '28px 20px', textAlign: 'center' }}>
+        <p style={{ fontSize: 11, color: 'var(--text-3)', marginBottom: 16, fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          İmtahana Hazırlıq İndeksi
+        </p>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+          <ERIGauge score={eri} size={200} />
+        </div>
+        <p style={{ fontSize: 12, color: 'var(--text-2)', lineHeight: 1.6, maxWidth: 320, margin: '0 auto' }}>
+          ERI ümumi ortalamanı, öyrənmə sürətini, fənn balansını, 7 günlük trendi və streak-i nəzərə alaraq hesablanır.
+        </p>
+      </motion.div>
+      <ERIBreakdownCard />
+      <PredictivePanel />
+    </div>
+  )
+}
+
+// ── Knowledge tab ──────────────────────────────────────────────────────────────
+
+function KnowledgeTab() {
+  const { weakNodes } = useKnowledgeGraph()
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <KnowledgeGraph />
+      {weakNodes.length > 0 && (
+        <motion.div className="card" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, ...PAGE_SPRING }}>
+          <p className="card-title" style={{ marginBottom: 14 }}>Zəif Mövzular</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {weakNodes.slice(0, 6).map((node, i) => (
+              <motion.div key={node.id}
+                initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.04 }}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 10, background: 'rgba(255,77,109,0.06)', border: '0.5px solid rgba(255,77,109,0.2)' }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, background: 'rgba(255,77,109,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 900, color: 'var(--danger)', fontFamily: 'var(--font-heading)' }}>
+                  {node.masteryLevel}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-1)' }}>{node.topicName}</p>
+                  <p style={{ fontSize: 10, color: 'var(--text-3)' }}>{node.subject}</p>
+                </div>
+                <span style={{ fontSize: 10, color: 'var(--danger)', fontWeight: 700 }}>Zəif</span>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+    </div>
+  )
+}
+
+// ── Tab components (trivial) ───────────────────────────────────────────────────
+
+function SpacedTab()   { return <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}><SpacedRepQueue /><ForgettingCurve /></div> }
+function CognitiveTab(){ return <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}><CognitiveLoadBar /><DKIndexCard /><LearningProfileCard /></div> }
+function CohortTab()   { return <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}><CohortChart /></div> }
+function PassportTab() { return <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}><LearningPassport /><MilestoneTimeline /></div> }
+
 // ── Main ───────────────────────────────────────────────────────────────────────
+
 export default function Statistics() {
-  const { userProfile } = useAuth()
-  const userId = userProfile?.id as string | undefined
-  const [selectedSubject, setSelectedSubject] = useState<FirestoreStats['subjectStats'][0] | null>(null)
+  const [activeTab, setActiveTab] = useState<TabId>('overview')
 
-  const { data: stats = DEFAULT_STATS, isLoading } = useQuery({
-    queryKey: ['my-statistics', userId],
-    queryFn:  apiGetMyStatistics,
-    staleTime: 30_000,
-    gcTime:    60_000,
-    enabled:   !!userId,
-  })
-  const { data: results = [] } = useQuery<FirestoreResult[]>({
-    queryKey: ['my-results', userId],
-    queryFn:  apiGetMyResults,
-    staleTime: 30_000,
-    gcTime:    60_000,
-    enabled:   !!userId,
-  })
-
-  if (isLoading) return <DashboardSkeleton />
+  const CONTENT: Record<TabId, React.ReactNode> = {
+    overview:  <OverviewTab />,
+    eri:       <ERITab />,
+    knowledge: <KnowledgeTab />,
+    spaced:    <SpacedTab />,
+    cognitive: <CognitiveTab />,
+    cohort:    <CohortTab />,
+    passport:  <PassportTab />,
+  }
 
   return (
-    <div className="page-inner anim-fade-up">
-      {selectedSubject
-        ? <SubjectDetail subject={selectedSubject} results={results} onBack={() => setSelectedSubject(null)} />
-        : <Overview stats={stats} results={results} onSelectSubject={setSelectedSubject} />
-      }
+    <div className="page-inner">
+      <div style={{ marginBottom: 16 }}>
+        <h1 style={{ fontSize: 20, fontWeight: 900, color: 'var(--text-1)', fontFamily: 'var(--font-heading)', lineHeight: 1, marginBottom: 3 }}>
+          Statistika
+        </h1>
+        <p style={{ fontSize: 12, color: 'var(--text-3)' }}>Analitik irəliləyiş paneli</p>
+      </div>
+
+      <SummaryStrip />
+
+      {/* Tab bar */}
+      <div style={{ display: 'flex', gap: 4, overflowX: 'auto', paddingBottom: 4, marginBottom: 16, scrollbarWidth: 'none' }}>
+        {TABS.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            style={{
+              padding: '7px 14px', borderRadius: 20, fontSize: 11, fontWeight: 700,
+              whiteSpace: 'nowrap', cursor: 'pointer', flexShrink: 0, transition: 'all 0.2s',
+              background: activeTab === tab.id ? 'var(--bg-active)' : 'rgba(255,255,255,0.04)',
+              border: activeTab === tab.id ? '0.5px solid var(--border-focus)' : '0.5px solid var(--border)',
+              color: activeTab === tab.id ? 'var(--primary)' : 'var(--text-2)',
+              boxShadow: activeTab === tab.id ? '0 0 10px var(--glow-sm)' : 'none',
+            }}
+          >
+            <span style={{ marginRight: 5 }}>{tab.icon}</span>{tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+        >
+          {CONTENT[activeTab]}
+        </motion.div>
+      </AnimatePresence>
     </div>
   )
 }

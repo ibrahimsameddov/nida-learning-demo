@@ -1,0 +1,196 @@
+/* ═══════════════════════════════════════════════════════
+   NIDA Design System — Semantic Tokens v2.0
+   Light (warm neutral) is the DEFAULT — :root.
+   Dark mode is the OVERRIDE — [data-theme='dark'].
+   Components reference ONLY these. Never primitives.
+═══════════════════════════════════════════════════════ */
+
+/* ── Light mode (default) ────────────────────────────── */
+:root {
+
+  /* Background */
+  --bg-base:       #F5F3EE;          /* page bg — warm cream, 3% sarımtıl */
+  --bg-elevated:   #FAFAF7;          /* kart fonu — az daha açıq */
+  --bg-card:       #FFFFFF;          /* üst səviyyə kartlar */
+  --bg-card-solid: #FFFFFF;
+  --bg-overlay:    rgba(26,26,24,0.60);
+  --bg-nav:        rgba(255,255,255,0.97);   /* bottom nav */
+  --bg-nav-top:    rgba(245,243,238,0.95);   /* legacy alias */
+  --bg-input:      #EDEBE5;          /* input, tag, badge fonu */
+  --bg-hover:      rgba(26,26,24,0.05);
+  --bg-active:     rgba(201,149,43,0.10);
+  --bg-muted:      #EDEBE5;          /* alias — input sahələri */
+  --bg-hero:       #1A2535;          /* sidebar, topbar — dizayn qərarı: həmişə tünd */
+
+  /* Text */
+  --text-1:          #1A1A18;        /* warm near-black */
+  --text-2:          #4A4843;
+  --text-3:          #8A8680;
+  --text-on-accent:  #FFFFFF;
+  --text-inverse:    #FAFAF7;        /* tünd fon üzərində (sidebar, topbar) */
+  --text-primary:    #1A1A18;        /* alias */
+  --text-secondary:  #4A4843;
+  --text-tertiary:   #8A8680;
+
+  /* Border */
+  --border:          rgba(26,26,24,0.08);
+  --border-hover:    rgba(26,26,24,0.20);
+  --border-focus:    #C9952B;        /* qızılı fokus həlqəsi */
+  --border-strong:   rgba(26,26,24,0.25);
+  --border-card:     rgba(26,26,24,0.10);
+  --border-base:     rgba(26,26,24,0.08);   /* alias */
+
+  /* Interactive — primary = Gold */
+  --primary:         #C9952B;
+  --accent:          #E8B84B;
+  --primary-hover:   #E8B84B;
+  --glow:            rgba(201,149,43,0.30);
+  --glow-sm:         rgba(201,149,43,0.15);
+  --color-primary:   #C9952B;        /* alias */
+  --color-mid:       #E8B84B;
+  --color-accent:    #1A2535;
+
+  /* Feedback */
+  --success:         #1D9E75;
+  --warning:         #EF9F27;
+  --danger:          #E24B4A;
+  --info:            #378ADD;
+  --success-bg:      rgba(29,158,117,0.12);
+  --warning-bg:      rgba(239,159,39,0.12);
+  --danger-bg:       rgba(226,75,74,0.12);
+  --color-success:   #1D9E75;
+  --color-warning:   #EF9F27;
+  --color-danger:    #E24B4A;
+  --color-info:      #378ADD;
+
+  /* Shadows — light, warm */
+  --shadow-card:     0 1px 3px rgba(26,26,24,0.06), 0 4px 12px rgba(26,26,24,0.04);
+  --shadow-btn:      0 1px 4px rgba(201,149,43,0.20);
+  --shadow-nav:      0 1px 20px rgba(26,26,24,0.08);
+  --shadow-nav-side: 2px 0 20px rgba(26,26,24,0.06);
+  --shadow-focus:    0 0 0 3px rgba(201,149,43,0.20);
+  --shadow-glow:     0 0 24px rgba(201,149,43,0.12);
+  --shadow-sm:       0 1px 3px rgba(26,26,24,0.06);
+  --shadow-md:       0 2px 8px rgba(26,26,24,0.08);
+
+  /* Shimmer line (kartların üst kənarı) */
+  --shimmer-line: linear-gradient(
+    90deg,
+    transparent,
+    rgba(201,149,43,0.18),
+    transparent
+  );
+
+  /* Scrollbar */
+  --scrollbar:       rgba(26,26,24,0.18);
+  --scrollbar-hover: rgba(26,26,24,0.32);
+
+  /* Layout */
+  --sidebar-w: 220px;
+  --topbar-h:  62px;
+  --bnav-h:    70px;
+
+  /* Motion aliases */
+  --spring: var(--ease-spring);
+  --smooth: var(--ease-smooth);
+
+  /* Orb colors */
+  --orb-1: #C9952B;
+  --orb-2: #8B6914;
+  --orb-3: #E8B84B;
+}
+
+/* ── Dark mode override ───────────────────────────────── */
+[data-theme='dark'] {
+
+  /* Background */
+  --bg-base:       #0F1923;
+  --bg-elevated:   #141E2B;
+  --bg-card:       rgba(26,37,53,0.80);
+  --bg-card-solid: #1A2535;
+  --bg-overlay:    rgba(0,0,0,0.80);
+  --bg-nav:        rgba(10,17,25,0.96);
+  --bg-nav-top:    rgba(10,17,25,0.92);
+  --bg-input:      rgba(201,149,43,0.05);
+  --bg-hover:      rgba(201,149,43,0.06);
+  --bg-active:     rgba(201,149,43,0.12);
+  --bg-muted:      #1F2D3D;
+  --bg-hero:       #0A1119;
+
+  /* Text */
+  --text-1:          #F0EEE8;
+  --text-2:          rgba(240,238,232,0.65);
+  --text-3:          rgba(240,238,232,0.38);
+  --text-on-accent:  #1A1A18;
+  --text-inverse:    #1A1A18;
+  --text-primary:    #F0EEE8;
+  --text-secondary:  #A8A49E;
+  --text-tertiary:   #6B6762;
+
+  /* Border */
+  --border:          rgba(240,238,232,0.07);
+  --border-hover:    rgba(240,238,232,0.18);
+  --border-focus:    #C9952B;
+  --border-strong:   rgba(240,238,232,0.25);
+  --border-card:     rgba(240,238,232,0.09);
+  --border-base:     rgba(240,238,232,0.07);
+
+  /* Interactive — primary = Gold (eyni) */
+  --primary:         #C9952B;
+  --accent:          #E8B84B;
+  --primary-hover:   #E8B84B;
+  --glow:            rgba(201,149,43,0.40);
+  --glow-sm:         rgba(201,149,43,0.20);
+
+  /* Feedback — tünd fon üçün parlaq */
+  --success:         #00E5A0;
+  --warning:         #FFB347;
+  --danger:          #FF4D6D;
+  --success-bg:      rgba(0,229,160,0.10);
+  --warning-bg:      rgba(255,179,71,0.10);
+  --danger-bg:       rgba(255,77,109,0.10);
+
+  /* Shadows */
+  --shadow-card:     none;
+  --shadow-btn:      0 1px 4px rgba(201,149,43,0.25);
+  --shadow-nav:      0 1px 30px rgba(201,149,43,0.06);
+  --shadow-nav-side: 2px 0 30px rgba(201,149,43,0.05);
+  --shadow-focus:    0 0 0 3px rgba(201,149,43,0.20);
+  --shadow-glow:     0 0 40px rgba(201,149,43,0.12);
+  --shadow-sm:       0 1px 3px rgba(0,0,0,0.25);
+  --shadow-md:       0 2px 8px rgba(0,0,0,0.35);
+
+  /* Shimmer line */
+  --shimmer-line: linear-gradient(
+    90deg,
+    transparent,
+    rgba(201,149,43,0.35),
+    transparent
+  );
+
+  /* Scrollbar */
+  --scrollbar:       rgba(201,149,43,0.30);
+  --scrollbar-hover: rgba(201,149,43,0.55);
+
+  /* Orb colors */
+  --orb-1: #C9A84C;
+  --orb-2: #8B6914;
+  --orb-3: #DDB95A;
+}
+
+/* ── Sidebar & Topbar — həmişə tünd kontekst ─────────── *
+   --bg-hero ilə tünd fon aldıqlarından, daxilindəki
+   bütün tokenlar tünd versiyaya override olunur.
+   Bu CSS dəyişən scoping-dir — hardcoded rəng yoxdur.
+   ──────────────────────────────────────────────────── */
+.sidebar, .topbar {
+  --text-1:       #F0EEE8;
+  --text-2:       rgba(240,238,232,0.65);
+  --text-3:       rgba(240,238,232,0.38);
+  --border:       rgba(201,149,43,0.15);
+  --border-hover: rgba(201,149,43,0.30);
+  --bg-hover:     rgba(201,149,43,0.06);
+  --bg-active:    rgba(201,149,43,0.12);
+  --glow:         rgba(201,149,43,0.40);
+  --glow-sm:      rgba(201,149,43,0.20);
+}

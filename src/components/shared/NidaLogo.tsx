@@ -1,37 +1,57 @@
-interface NidaLogoProps {
-  size?:    "sm" | "md" | "lg";
-  variant?: "default" | "subtle";
-  onClick?: () => void;
+import { useAuthStore } from '@/stores/authStore'
+import { Role } from '@/types/models'
+
+// Role → logo rəngi xəritəsi
+// Login səhifəsi seçilmiş rolu prop kimi ötürür
+// Digər səhifələr auth store-dan avtomatik alır
+const ROLE_COLORS: Record<string, string> = {
+  [Role.Student]: '#4F87FF',
+  [Role.Teacher]: '#A78BFA',
+  [Role.Parent]:  '#F4A261',
+  default:        '#C9A84C',
 }
 
-export default function NidaLogo({ size = "md", variant = "default", onClick }: NidaLogoProps) {
-  const sizes = {
-    sm: { box: 28, font: 13, radius: 8 },
-    md: { box: 34, font: 15, radius: 10 },
-    lg: { box: 56, font: 24, radius: 16 },
-  };
-  const s      = sizes[size] || sizes.md;
-  const bg     = variant === "subtle" ? "rgba(255,255,255,0.15)" : "var(--theme-mid)";
-  const border = variant === "subtle" ? "1px solid rgba(255,255,255,0.2)" : "none";
+interface NidaLogoProps {
+  size?:      number
+  role?:      string
+  className?: string
+  style?:     React.CSSProperties
+}
 
+export default function NidaLogo({ size = 40, role: roleProp, className, style }: NidaLogoProps) {
+  const storeRole  = useAuthStore(s => s.user?.role)
+  const activeRole = roleProp ?? storeRole
+  const color      = ROLE_COLORS[activeRole as string] ?? ROLE_COLORS.default
+
+  // Qapı SVG-i: sol bar + perspektiv üst/alt barlar + sağ bar + nida işarəsi
+  // viewBox: 72x90 (nisbət 1:1.25 — referans logoya uyğun)
   return (
-    <div
-      onClick={onClick}
-      style={{
-        width: s.box, height: s.box, borderRadius: s.radius,
-        background: bg, border,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontFamily: "'Lexend Deca','Lexend Deca',sans-serif",
-        fontWeight: 800, fontSize: s.font, color: "#fff",
-        flexShrink: 0,
-        transition: "transform 0.35s cubic-bezier(0.34,1.56,0.64,1)",
-        cursor: onClick ? "pointer" : "default",
-        userSelect: "none",
-      }}
-      onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.1) rotate(-3deg)"; }}
-      onMouseLeave={e => { e.currentTarget.style.transform = "scale(1) rotate(0deg)"; }}
+    <svg
+      width={size}
+      height={Math.round(size * 1.25)}
+      viewBox="0 0 72 90"
+      fill="none"
+      className={className}
+      style={style}
+      aria-label="NIDA logo"
     >
-      N<span style={{ color: "var(--theme-accent)", fontSize: "65%" }}>!</span>
-    </div>
-  );
+      {/* Sol sakuli bar — qapi soykeneci */}
+      <rect x="0" y="0" width="12" height="90" fill={color} />
+
+      {/* Ust bar — perspektiv bucaq */}
+      <path d="M12 0 L72 8 L72 19 L12 11 Z" fill={color} />
+
+      {/* Alt bar — perspektiv bucaq */}
+      <path d="M12 79 L72 71 L72 82 L12 90 Z" fill={color} />
+
+      {/* Sag bar — aciq qapinin kenari */}
+      <rect x="61" y="8" width="11" height="74" fill={color} />
+
+      {/* Nida isaresinin bedeni */}
+      <rect x="33" y="24" width="7" height="30" rx="3.5" fill={color} />
+
+      {/* Nida isaresinin noqtesi */}
+      <circle cx="36.5" cy="66" r="4.5" fill={color} />
+    </svg>
+  )
 }

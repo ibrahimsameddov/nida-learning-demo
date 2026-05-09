@@ -4,7 +4,7 @@ import { useThemeStore } from "@/stores/themeStore";
 import NidaLogo from "@/components/shared/NidaLogo";
 import Avatar from "@/components/ui/Avatar";
 import { Role } from "@/types/models";
-import { XPBar, StreakBadge, BadgeModal, LevelUpModal, useStreakCheck } from "@/components/ui/Gamification";
+import { XPBar, StreakBadge, useStreakCheck } from "@/components/ui/Gamification";
 import NotificationBell from "@/components/ui/NotificationBell";
 
 const HOME_PATHS = ["/", "/teacher", "/parent"];
@@ -32,53 +32,35 @@ export function GlassTopbar({ showBack = false }: TopbarProps) {
   useStreakCheck();
 
   return (
-    <header
-      className="topbar"
-      style={{
-        background: isDark
-          ? "color-mix(in srgb, var(--bg-primary) 80%, transparent)"
-          : "color-mix(in srgb, var(--bg-primary) 90%, transparent)",
-      }}
-    >
-      {/* Left: back button OR name+id */}
+    <header className="topbar">
+      {/* Left: logo + name/id  OR  back button */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-        {!isHome && !showBack === false ? (
-          <button
-            onClick={() => navigate(-1)}
-            style={{
-              background: "rgba(128,128,128,0.1)", border: "0.5px solid var(--border)",
-              borderRadius: 10, padding: "6px 12px",
-              color: "var(--text-2)", fontSize: 13, fontWeight: 500,
-              cursor: "pointer", display: "flex", alignItems: "center", gap: 5,
-            }}
-          >
-            ← Geri
-          </button>
-        ) : null}
-
-        {isHome && (
-          <div style={{ minWidth: 0 }}>
-            <div style={{
-              fontFamily: "'Lexend Deca', sans-serif", fontWeight: 700,
-              fontSize: 14, color: "var(--text-1)", lineHeight: 1.2,
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            }}>
-              {isTeacher ? name : `Xoş gəldin, ${firstName}!`}
-            </div>
-            {displayId && (
+        {isHome ? (
+          <>
+            <NidaLogo size={28} />
+            <div style={{ minWidth: 0 }}>
               <div style={{
-                fontSize: 10,
-                color: role === Role.Teacher ? "#4F87FF"
-                     : role === Role.Parent  ? "#F4A261"
-                     : "#00C9A7",
-                fontFamily: "'JetBrains Mono', monospace",
-                fontWeight: 700, letterSpacing: "0.05em",
+                fontFamily: "'Lexend Deca', sans-serif", fontWeight: 700,
+                fontSize: 14, color: "var(--text-1)", lineHeight: 1.2,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
               }}>
-                {displayId}
+                {isTeacher ? name : `Xoş gəldin, ${firstName}!`}
               </div>
-            )}
-          </div>
-        )}
+              {displayId && (
+                <div style={{
+                  fontSize: 10,
+                  color: role === Role.Teacher ? "#A78BFA"
+                       : role === Role.Parent  ? "#F4A261"
+                       : "#4F87FF",
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontWeight: 700, letterSpacing: "0.05em",
+                }}>
+                  {displayId}
+                </div>
+              )}
+            </div>
+          </>
+        ) : null}
 
         {!isHome && (
           <button
@@ -114,7 +96,7 @@ export function GlassTopbar({ showBack = false }: TopbarProps) {
           style={{
             width: 34, height: 34, borderRadius: 9,
             border: "0.5px solid var(--border)",
-            background: isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.06)",
+            background: "rgba(255,255,255,0.08)",
             cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: 16, transition: "transform 0.15s",
@@ -128,9 +110,6 @@ export function GlassTopbar({ showBack = false }: TopbarProps) {
         <Avatar name={name} size="sm" onClick={() => navigate("/profile")} />
       </div>
 
-      {/* Gamification modals — global, rendered once */}
-      <BadgeModal />
-      <LevelUpModal />
     </header>
   );
 }

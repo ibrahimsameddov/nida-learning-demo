@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -338,7 +337,82 @@ export default function TeacherDashboard() {
   return (
     <div className="page-inner">
 
-      {/* ── Daily stats ───────────────────────────────────────────── */}
+      {/* ── Ultra Premium Teacher Hero Banner ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={SPRING}
+        style={{
+          position: 'relative', overflow: 'hidden',
+          borderRadius: 22,
+          background: 'linear-gradient(135deg, rgba(167,139,250,0.15) 0%, rgba(124,58,237,0.08) 100%)',
+          border: '0.5px solid rgba(167,139,250,0.25)',
+          padding: '20px 20px 18px',
+          marginBottom: 4,
+        }}
+      >
+        {/* Glow orb */}
+        <div style={{
+          position: 'absolute', top: -20, right: -20,
+          width: 140, height: 140, borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(167,139,250,0.3) 0%, transparent 70%)',
+          pointerEvents: 'none',
+        }} />
+
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div>
+            <p style={{
+              fontSize: 11, fontWeight: 700, letterSpacing: '0.1em',
+              textTransform: 'uppercase', color: 'rgba(167,139,250,0.9)', marginBottom: 4,
+            }}>
+              Müəllim Paneli 📋
+            </p>
+            <h2 style={{
+              fontFamily: "'Lexend Deca', sans-serif", fontWeight: 900, fontSize: 22,
+              background: 'linear-gradient(135deg, var(--text-primary) 0%, rgba(167,139,250,0.9) 100%)',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+              marginBottom: 2,
+            }}>
+              Günün xülasəsi
+            </h2>
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+              {new Date().toLocaleDateString('az-AZ', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </div>
+          </div>
+          {/* Stats chips */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+            <div style={{
+              padding: '5px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700,
+              background: 'rgba(167,139,250,0.12)', border: '0.5px solid rgba(167,139,250,0.3)',
+              color: '#A78BFA', display: 'flex', alignItems: 'center', gap: 5,
+            }}>
+              👥 {totalStudents} şagird
+            </div>
+            <div style={{
+              padding: '5px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700,
+              background: 'rgba(0,201,167,0.1)', border: '0.5px solid rgba(0,201,167,0.3)',
+              color: '#00C9A7', display: 'flex', alignItems: 'center', gap: 5,
+            }}>
+              ✓ {activeExams.length} aktiv imtahan
+            </div>
+          </div>
+        </div>
+
+        <div style={{
+          fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5,
+          background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: '8px 12px',
+          border: '0.5px solid rgba(255,255,255,0.06)',
+        }}>
+          {groups.length === 0
+            ? '👋 Qrup yaradaraq şagirdləri əlavə etməyə başlayın!'
+            : activeExams.length > 0
+            ? `⚡ ${activeExams.length} aktiv imtahan var — şagirdlər nəticə gözləyir!`
+            : `📚 ${groups.length} qrup · ${totalStudents} şagird aktiv izlənilir.`
+          }
+        </div>
+      </motion.div>
+
+      {/* ── Daily stats ── */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -350,6 +424,7 @@ export default function TeacherDashboard() {
             {new Date().toLocaleDateString('az-AZ', { day: 'numeric', month: 'long' })}
           </span>
         </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
           <StatCard
             icon="👥"

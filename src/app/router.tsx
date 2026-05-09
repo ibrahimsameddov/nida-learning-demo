@@ -32,10 +32,11 @@ const TeacherDashboard  = lazy(() => import('../features/teacher/dashboard/Dashb
 const TeacherStudents   = lazy(() => import('../features/teacher/students/Students'))
 const TeacherGroups     = lazy(() => import('../features/teacher/students/TeacherGroups'))
 const TeacherTasks      = lazy(() => import('../features/teacher/exams/TeacherTasks'))
-const TeacherAnalytics  = lazy(() => import('../features/teacher/analytics/TeacherStudentStats'))
+const TeacherAnalytics  = lazy(() => import('../features/teacher/analytics/TeacherAnalytics'))
 const TeacherExams      = lazy(() => import('../features/teacher/exams/Exams'))
 const TeacherMessages   = lazy(() => import('../features/teacher/messages/Messages'))
 const TeacherHomework   = lazy(() => import('../features/teacher/homework/TeacherHomework'))
+const TeacherProfile    = lazy(() => import('../features/teacher/profile/TeacherProfile'))
 const StudentHomework   = lazy(() => import('../features/student/homework/StudentHomework'))
 const TopicQuizPage     = lazy(() => import('../features/student/quiz/TopicQuizPage'))
 
@@ -45,6 +46,7 @@ const ParentStatistics   = lazy(() => import('../features/parent/statistics/Stat
 const ParentTeachers     = lazy(() => import('../features/parent/teachers/Teachers'))
 const ParentMessages     = lazy(() => import('../features/parent/messages/Messages'))
 const ParentPayments     = lazy(() => import('../features/parent/payments/Payments'))
+const ParentProfile      = lazy(() => import('../features/parent/profile/ParentProfile'))
 
 // Route qoruyucuları
 function AuthGuard() {
@@ -116,6 +118,7 @@ export const router = createBrowserRouter(
               { path: 'exams',     element: <PageWrapper><TeacherExams /></PageWrapper> },
               { path: 'homework',  element: <PageWrapper><TeacherHomework /></PageWrapper> },
               { path: 'messages',  element: <PageWrapper><TeacherMessages /></PageWrapper> },
+              { path: 'profile',   element: <PageWrapper><TeacherProfile /></PageWrapper> },
             ],
           },
 
@@ -130,6 +133,7 @@ export const router = createBrowserRouter(
               { path: 'teachers',   element: <PageWrapper><ParentTeachers /></PageWrapper>   },
               { path: 'messages',   element: <PageWrapper><ParentMessages /></PageWrapper>   },
               { path: 'payments',   element: <PageWrapper><ParentPayments /></PageWrapper>   },
+              { path: 'profile',    element: <PageWrapper><ParentProfile /></PageWrapper>    },
             ],
           },
         ],

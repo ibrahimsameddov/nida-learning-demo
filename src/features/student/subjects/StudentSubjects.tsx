@@ -1,15 +1,19 @@
 // @ts-nocheck
-import { useNavigate }  from 'react-router-dom'
-import { motion }       from 'framer-motion'
-import FloatingOrbs     from '@/components/ui/FloatingOrbs'
-import { Sidebar }      from '@/components/layout/Sidebar'
-import { Topbar }       from '@/components/layout/GlassTopbar'
-import { BottomNav }    from '@/components/layout/BottomNav'
-import { SPRING }       from '@/lib/motion'
-import { getExamData }  from '@/types/examData'
-import { useAuthStore } from '@/stores/authStore'
+import { useNavigate }                    from 'react-router-dom'
+import { motion }                         from 'framer-motion'
+import FloatingOrbs                       from '@/components/ui/FloatingOrbs'
+import { Sidebar }                        from '@/components/layout/Sidebar'
+import { Topbar }                         from '@/components/layout/GlassTopbar'
+import { BottomNav }                      from '@/components/layout/BottomNav'
+import { SPRING }                         from '@/lib/motion'
+import { getExamData }                    from '@/types/examData'
+import { useAuthStore }                   from '@/stores/authStore'
+import { useHoverPrefetch, prefetch }     from '@/lib/performance'
 
 function SubjectButton({ subj, color, onClick }) {
+  const { onMouseEnter: prefetchIn, onMouseLeave: prefetchOut } =
+    useHoverPrefetch(() => prefetch.subjectTopics(subj.key))
+
   return (
     <motion.button
       whileHover={{ scale: 1.02 }}
@@ -24,10 +28,12 @@ function SubjectButton({ subj, color, onClick }) {
         minHeight: 90,
       }}
       onMouseEnter={e => {
+        prefetchIn()
         e.currentTarget.style.borderColor = color
         e.currentTarget.style.background  = `color-mix(in srgb, ${color} 8%, rgba(255,255,255,0.03))`
       }}
       onMouseLeave={e => {
+        prefetchOut()
         e.currentTarget.style.borderColor = 'var(--border)'
         e.currentTarget.style.background  = 'rgba(255,255,255,0.03)'
       }}
