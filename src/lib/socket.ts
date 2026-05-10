@@ -4,7 +4,7 @@ import { useNotificationStore }  from '../stores/notificationStore'
 import type { Notification }     from '../types/models'
 
 // Socket devre dışı bırakılabilir — backend olmayan demo modunda hata spamını önler
-const SOCKET_ENABLED = import.meta.env.VITE_SOCKET_ENABLED !== 'false'
+const SOCKET_ENABLED = import.meta.env.VITE_SOCKET_ENABLED === 'true'
 const WS_URL         = import.meta.env.VITE_WS_URL ?? 'http://localhost:8080'
 
 class SocketService {
