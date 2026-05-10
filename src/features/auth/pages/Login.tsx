@@ -7,7 +7,6 @@ import { loginSchema, type LoginInput } from '../../../lib/validations'
 import { useLogin }           from '../hooks/useLogin'
 import { useAuthStore }       from '../../../stores/authStore'
 import { Role }               from '../../../types/models'
-import NidaLogo               from '@/components/shared/NidaLogo'
 
 const ROLE_HOME: Record<Role, string> = {
   [Role.Student]: '/',
@@ -97,22 +96,8 @@ export default function Login() {
         style={{ width: '100%', maxWidth: 400, position: 'relative', zIndex: 1 }}
       >
 
-        {/* Logo + Title */}
+        {/* Title */}
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <motion.div
-            animate={{ boxShadow: `0 0 32px ${currentRoleInfo.glow}` }}
-            transition={{ duration: 0.5 }}
-            style={{
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              width: 72, height: 72, borderRadius: 20, marginBottom: 16,
-              background: `linear-gradient(135deg, ${currentRoleInfo.color}18, ${currentRoleInfo.color}06)`,
-              border: `1.5px solid ${currentRoleInfo.color}40`,
-              transition: 'background 0.5s ease, border-color 0.5s ease',
-            }}
-          >
-            <NidaLogo size={38} role={activeRole} />
-          </motion.div>
-
           <h1 style={{
             fontFamily: "'Lexend Deca', sans-serif",
             fontWeight: 800, fontSize: 26,
