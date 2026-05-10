@@ -7,6 +7,18 @@ import { db, uid } from './db.shared'
 import { dbGetProfile } from './db.profile'
 import { dbWriteNotification, dbNotifyGroup } from './db.notifications'
 
+export interface CreateExamInput {
+  title:           string
+  subject:         string
+  topics:          string[]
+  questionCount:   number
+  durationMinutes: number
+  difficulty:      string | null
+  groupIds?:       string[]
+  dueDate:         string | null
+  examType:        'SINAQ' | 'TAPSIRIG'
+}
+
 export async function dbGetMyExams() {
   const snap = await getDocs(
     query(collection(db, 'exams'), where('teacherUid', '==', uid()))
@@ -14,7 +26,7 @@ export async function dbGetMyExams() {
   return snap.docs.map(d => ({ ...d.data(), id: d.id }))
 }
 
-export async function dbCreateExam(data: any) {
+export async function dbCreateExam(data: CreateExamInput) {
   const ref = await addDoc(collection(db, 'exams'), {
     ...data, teacherUid: uid(), status: 'waiting', createdAt: serverTimestamp(),
   })
@@ -82,14 +94,12 @@ export async function dbGetSinaqExamsForStudent() {
   )
   if (groupsSnap.empty) return []
   const groupIds = groupsSnap.docs.map(d => d.id)
-  const results: any[] = []
-  for (const gid of groupIds.slice(0, 10)) {
-    const snap = await getDocs(
-      query(collection(db, 'sinaqExams'), where('groupId', '==', gid), orderBy('createdAt', 'desc'))
+  const snaps = await Promise.all(
+    groupIds.slice(0, 10).map(gid =>
+      getDocs(query(collection(db, 'sinaqExams'), where('groupId', '==', gid), orderBy('createdAt', 'desc')))
     )
-    snap.docs.forEach(d => results.push({ id: d.id, ...d.data() }))
-  }
-  return results
+  )
+  return snaps.flatMap(snap => snap.docs.map(d => ({ id: d.id, ...d.data() })))
 }
 
 export async function dbSaveSinaqAttempt(data: {
@@ -183,13 +193,15 @@ export async function dbGetChildSharedExamAttempts(studentUid: string) {
   )
   const attempts = attSnap.docs.map(d => ({ id: d.id, ...d.data() }))
   const examIds = [...new Set(attempts.map((a: any) => a.examId))]
-  const shared: any[] = []
-  for (const eid of examIds) {
-    const examSnap = await getDoc(doc(db, 'sinaqExams', eid)).catch(() => null)
-    if (examSnap?.exists() && (examSnap.data() as any).sharedWithParents) {
+  const examSnaps = await Promise.all(
+    examIds.map(eid => getDoc(doc(db, 'sinaqExams', eid)).catch(() => null))
+  )
+  return examIds
+    .map((eid, i) => {
+      const examSnap = examSnaps[i]
+      if (!examSnap?.exists() || !(examSnap.data() as any).sharedWithParents) return null
       const att = attempts.find((a: any) => a.examId === eid)
-      if (att) shared.push({ ...att, examData: examSnap.data() })
-    }
-  }
-  return shared
+      return att ? { ...att, examData: examSnap.data() } : null
+    })
+    .filter(Boolean)
 }

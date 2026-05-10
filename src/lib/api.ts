@@ -9,7 +9,7 @@ import {
   dbGetProfileByUid, dbGetProfilesByUids, dbGetUserByUniqueId, dbSearchUser,
   dbGetIncomingPermissions, dbGetSentPermissions, dbSendPermission,
   dbRespondPermission, dbRevokePermission,
-  dbGetMyExams, dbCreateExam, dbActivateExam,
+  dbGetMyExams, dbCreateExam, dbActivateExam, type CreateExamInput,
   dbGetBalance, dbTopUp, dbGetPaymentHistory,
   dbGetSentMessages, dbSendMessage,
   dbSendParentRequest, dbGetParentRequests, dbGetIncomingParentRequests,
@@ -115,7 +115,7 @@ export const apiSendNotification         = (_data: any) => Promise.resolve({ suc
 
 // ─── Exams ────────────────────────────────────────────────────────────────────
 export const apiGetMyExams   = ()           => dbGetMyExams()
-export const apiCreateExam   = (data: any)  => dbCreateExam(data)
+export const apiCreateExam   = (data: CreateExamInput) => dbCreateExam(data)
 export const apiActivateExam = (id: string) => dbActivateExam(id)
 
 // ─── Homeworks ────────────────────────────────────────────────────────────────
