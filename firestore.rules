@@ -2,12 +2,20 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Reads caller's role from userProfiles — used to gate teacher-only writes
+    function myRole() {
+      return get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.role;
+    }
+    function isTeacher() {
+      return request.auth != null && myRole() == 'TEACHER';
+    }
+
     // ── User Profiles — hər user yalnız öz datasına çata bilər ────────────────
     match /userProfiles/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Digər userlərin notification/received yazması üçün (müəllim → şagird)
+    // Digər userlərin notification/received yazması (müəllim → şagird, valideyn → şagird)
     match /userProfiles/{userId}/notifications/{notifId} {
       allow write: if request.auth != null;
     }
@@ -24,7 +32,7 @@ service cloud.firestore {
     // ── Groups ─────────────────────────────────────────────────────────────────
     match /groups/{groupId} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null;
+      allow create: if isTeacher();
       allow update: if request.auth != null &&
         (resource == null || resource.data.teacherUid == request.auth.uid);
       allow delete: if request.auth != null &&
@@ -47,7 +55,7 @@ service cloud.firestore {
     // ── Homeworks ──────────────────────────────────────────────────────────────
     match /homeworks/{hwId} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null;
+      allow create: if isTeacher();
       allow update, delete: if request.auth != null &&
         resource.data.teacherUid == request.auth.uid;
     }
@@ -63,7 +71,7 @@ service cloud.firestore {
     // ── Sinaq Exams ────────────────────────────────────────────────────────────
     match /sinaqExams/{examId} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null;
+      allow create: if isTeacher();
       allow update: if request.auth != null &&
         resource.data.teacherUid == request.auth.uid;
     }
@@ -99,15 +107,40 @@ service cloud.firestore {
     // ── Group Messages ─────────────────────────────────────────────────────────
     match /groupMessages/{msgId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow write: if isTeacher();
     }
 
-    // ── Exams (legacy) ─────────────────────────────────────────────────────────
+    // ── Exams ──────────────────────────────────────────────────────────────────
     match /exams/{examId} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null;
+      allow create: if isTeacher();
       allow update: if request.auth != null &&
         resource.data.teacherUid == request.auth.uid;
+    }
+
+    // ── Interventions ──────────────────────────────────────────────────────────
+    match /interventions/{id} {
+      allow create: if isTeacher();
+      allow read, update, delete: if request.auth != null &&
+        resource.data.teacherUid == request.auth.uid;
+    }
+
+    // ── Weekly Reports ─────────────────────────────────────────────────────────
+    match /weeklyReports/{reportId} {
+      allow read: if request.auth != null && (
+        resource.data.uid == request.auth.uid ||
+        resource.data.parentUid == request.auth.uid
+      );
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && (
+        resource.data.uid == request.auth.uid ||
+        resource.data.parentUid == request.auth.uid
+      );
+    }
+
+    // ── Live Session Watchers ──────────────────────────────────────────────────
+    match /liveSessionWatchers/{sessionId} {
+      allow read, write: if request.auth != null;
     }
   }
 }
