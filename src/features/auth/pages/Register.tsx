@@ -488,8 +488,8 @@ export default function Register() {
                   </FormField>
                 </div>
 
-                <FormField label="E-poçt" error={errors.email?.message}>
-                  <input className="input" type="email" placeholder="ali@example.com" {...register('email')} />
+                <FormField label="E-poçt" error={errors.email?.message} hint="Yalnız @gmail.com ünvanı qəbul edilir">
+                  <input className="input" type="email" placeholder="ali@gmail.com" {...register('email')} />
                 </FormField>
 
                 <FormField label="Şifrə" error={errors.password?.message} hint="Böyük/kiçik hərf, rəqəm, xüsusi simvol">
@@ -556,8 +556,8 @@ export default function Register() {
                   <input className="input" placeholder="Əli Həsənov" {...register('fullName')} />
                 </FormField>
 
-                <FormField label="E-poçt" error={errors.email?.message}>
-                  <input className="input" type="email" placeholder="ali@example.com" {...register('email')} />
+                <FormField label="E-poçt" error={errors.email?.message} hint="Yalnız @gmail.com ünvanı qəbul edilir">
+                  <input className="input" type="email" placeholder="ali@gmail.com" {...register('email')} />
                 </FormField>
 
                 <FormField label="Şifrə" error={errors.password?.message} hint="Böyük/kiçik hərf, rəqəm və xüsusi simvol">
