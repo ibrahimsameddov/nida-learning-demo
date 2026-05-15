@@ -9,7 +9,7 @@ import {
   apiGetPermittedStudents, apiGetStudentProfiles, apiGetParentUidsByStudentUid,
   apiTeacherMessageParent, apiTeacherSendDirectMessage,
 } from '@/lib/api'
-import { dbGetSentMessages, dbSendMessage } from '@/lib/db'
+import { apiGetSentMessages, apiSendMessage } from '@/lib/api'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -147,7 +147,7 @@ function ChatView({ conv, onBack, onSent }: any) {
     if (!t || sending) return
     setSending(true)
     try {
-      const msg = await dbSendMessage({ to: conv.id, toLabel: conv.label, mode: conv.mode, text: t })
+      const msg = await apiSendMessage({ to: conv.id, toLabel: conv.label, mode: conv.mode, text: t })
       onSent(msg)
       setText('')
     } catch { /* ignore */ } finally { setSending(false) }
@@ -593,7 +593,7 @@ function ComposeModal({ groups, onClose, onSent }: any) {
         const r = to.trim()
         if (!t || !r) { setErr('Alıcı və mesaj boş ola bilməz'); setSending(false); return }
         const label = groups.find((g: any) => g.id === r)?.name ?? r
-        const msg = await dbSendMessage({ to: r, toLabel: label, mode, text: t })
+        const msg = await apiSendMessage({ to: r, toLabel: label, mode, text: t })
         onSent(msg)
       }
     } catch (e: any) {
@@ -738,7 +738,7 @@ export default function TeacherMessages() {
 
   useEffect(() => {
     Promise.all([
-      dbGetSentMessages().catch(() => []),
+      apiGetSentMessages().catch(() => []),
       apiGetMyGroups().catch(() => []),
       apiGetSentPermissions().catch(() => []),
       apiGetMyNotifications().catch(() => []),

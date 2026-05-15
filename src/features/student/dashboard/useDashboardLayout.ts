@@ -1,6 +1,10 @@
+// @ts-nocheck
 import { useState, useCallback, useRef, useEffect } from 'react'
 import type { Layout, Layouts } from 'react-grid-layout'
-import { dbGetDashboardLayout, dbSaveDashboardLayout } from '@/lib/db'
+
+const LS_KEY = 'nida-dashboard-layout'
+const lsGet  = () => { try { return JSON.parse(localStorage.getItem(LS_KEY) ?? 'null') } catch { return null } }
+const lsSave = (data: any) => { try { localStorage.setItem(LS_KEY, JSON.stringify(data)) } catch {} }
 
 export type SaveStatus = 'idle' | 'saving' | 'saved'
 
@@ -45,25 +49,19 @@ export function useDashboardLayout(weakCount: number) {
     lg: buildLgLayout(weakCount),
     sm: buildSmLayout(),
   })
-  const [loaded, setLoaded]     = useState(false)
-  const [saveStatus, setSave]   = useState<SaveStatus>('idle')
+  const [loaded, setLoaded]   = useState(false)
+  const [saveStatus, setSave] = useState<SaveStatus>('idle')
   const saveTimer   = useRef<ReturnType<typeof setTimeout>>()
   const statusTimer = useRef<ReturnType<typeof setTimeout>>()
 
   useEffect(() => {
-    dbGetDashboardLayout()
-      .then(saved => {
-        if (saved?.layouts?.lg?.length) {
-          setLayouts({ lg: sanitizeLg(saved.layouts.lg), sm: buildSmLayout() })
-        } else {
-          setLayouts({ lg: buildLgLayout(weakCount), sm: buildSmLayout() })
-        }
-        setLoaded(true)
-      })
-      .catch(() => {
-        setLayouts({ lg: buildLgLayout(weakCount), sm: buildSmLayout() })
-        setLoaded(true)
-      })
+    const saved = lsGet()
+    if (saved?.lg?.length) {
+      setLayouts({ lg: sanitizeLg(saved.lg), sm: buildSmLayout() })
+    } else {
+      setLayouts({ lg: buildLgLayout(weakCount), sm: buildSmLayout() })
+    }
+    setLoaded(true)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const onLayoutChange = useCallback((_: Layout[], all: Layouts) => {
@@ -73,17 +71,16 @@ export function useDashboardLayout(weakCount: number) {
     clearTimeout(statusTimer.current)
     setSave('saving')
     saveTimer.current = setTimeout(() => {
-      dbSaveDashboardLayout({ lg }).then(() => {
-        setSave('saved')
-        statusTimer.current = setTimeout(() => setSave('idle'), 2000)
-      }).catch(() => setSave('idle'))
+      lsSave({ lg })
+      setSave('saved')
+      statusTimer.current = setTimeout(() => setSave('idle'), 2000)
     }, 1500)
   }, [])
 
   const resetLayout = useCallback(() => {
     const fresh: Layouts = { lg: buildLgLayout(weakCount), sm: buildSmLayout() }
     setLayouts(fresh)
-    dbSaveDashboardLayout({ lg: fresh.lg }).catch(() => {})
+    lsSave({ lg: fresh.lg })
   }, [weakCount])
 
   return { layouts, loaded, saveStatus, onLayoutChange, resetLayout }

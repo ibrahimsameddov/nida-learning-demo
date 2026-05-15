@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════
-   NIDA Design System — Semantic Tokens v2.0
-   Light (warm neutral) is the DEFAULT — :root.
-   Dark mode is the OVERRIDE — [data-theme='dark'].
+   NIDA Design System — Semantic Tokens v3.0
+   Light (blue-tinted, cheerful) is the DEFAULT — :root.
+   Dark mode (navy + gold) is the OVERRIDE — [data-theme='dark'].
    Components reference ONLY these. Never primitives.
 ═══════════════════════════════════════════════════════ */
 
@@ -9,81 +9,117 @@
 :root {
 
   /* Background */
-  --bg-base:       #F5F3EE;          /* page bg — warm cream, 3% sarımtıl */
-  --bg-elevated:   #FAFAF7;          /* kart fonu — az daha açıq */
-  --bg-card:       #FFFFFF;          /* üst səviyyə kartlar */
+  --bg-base:       #EEF2FF;          /* açıq mavi-indigo — canlı, brendli */
+  --bg-elevated:   #F5F7FF;          /* kart üzərindəki səviyyə */
+  --bg-card:       #FFFFFF;          /* kartlar ağ — fondan kəskin çıxır */
   --bg-card-solid: #FFFFFF;
-  --bg-overlay:    rgba(26,26,24,0.60);
-  --bg-nav:        rgba(255,255,255,0.97);   /* bottom nav */
-  --bg-nav-top:    rgba(245,243,238,0.95);   /* legacy alias */
-  --bg-input:      #EDEBE5;          /* input, tag, badge fonu */
-  --bg-hover:      rgba(26,26,24,0.05);
+  --bg-overlay:    rgba(15,25,60,0.55);
+  --bg-nav:        rgba(255,255,255,0.92);
+  --bg-nav-top:    rgba(238,242,255,0.95);
+  --bg-input:      #E8ECFA;
+  --bg-hover:      rgba(74,90,224,0.06);
   --bg-active:     rgba(201,149,43,0.10);
-  --bg-muted:      #EDEBE5;          /* alias — input sahələri */
-  --bg-hero:       #1A2535;          /* sidebar, topbar — dizayn qərarı: həmişə tünd */
+  --bg-muted:      #E8ECFA;
+  --bg-hero:       #1A2535;          /* sidebar, topbar — həmişə tünd */
 
   /* Text */
-  --text-1:          #1A1A18;        /* warm near-black */
-  --text-2:          #4A4843;
-  --text-3:          #8A8680;
+  --text-1:          #0F1340;        /* dərin navy-indigo — warm black yerinə */
+  --text-2:          #3A4070;
+  --text-3:          #7A80A8;
   --text-on-accent:  #FFFFFF;
-  --text-inverse:    #FAFAF7;        /* tünd fon üzərində (sidebar, topbar) */
-  --text-primary:    #1A1A18;        /* alias */
-  --text-secondary:  #4A4843;
-  --text-tertiary:   #8A8680;
+  --text-inverse:    #F0EEF8;
+  --text-primary:    #0F1340;
+  --text-secondary:  #3A4070;
+  --text-tertiary:   #7A80A8;
 
   /* Border */
-  --border:          rgba(26,26,24,0.08);
-  --border-hover:    rgba(26,26,24,0.20);
-  --border-focus:    #C9952B;        /* qızılı fokus həlqəsi */
-  --border-strong:   rgba(26,26,24,0.25);
-  --border-card:     rgba(26,26,24,0.10);
-  --border-base:     rgba(26,26,24,0.08);   /* alias */
+  --border:          rgba(74,90,224,0.12);
+  --border-hover:    rgba(74,90,224,0.28);
+  --border-focus:    #C9952B;
+  --border-strong:   rgba(74,90,224,0.30);
+  --border-card:     rgba(74,90,224,0.10);
+  --border-base:     rgba(74,90,224,0.12);
 
-  /* Interactive — primary = Gold */
+  /* Interactive — primary = Gold (brand sabit qalır) */
   --primary:         #C9952B;
   --accent:          #E8B84B;
   --primary-hover:   #E8B84B;
   --glow:            rgba(201,149,43,0.30);
   --glow-sm:         rgba(201,149,43,0.15);
-  --color-primary:   #C9952B;        /* alias */
+  --color-primary:   #C9952B;
   --color-mid:       #E8B84B;
   --color-accent:    #1A2535;
 
   /* Feedback */
-  --success:         #1D9E75;
-  --warning:         #EF9F27;
-  --danger:          #E24B4A;
-  --info:            #378ADD;
-  --success-bg:      rgba(29,158,117,0.12);
-  --warning-bg:      rgba(239,159,39,0.12);
-  --danger-bg:       rgba(226,75,74,0.12);
-  --color-success:   #1D9E75;
-  --color-warning:   #EF9F27;
-  --color-danger:    #E24B4A;
-  --color-info:      #378ADD;
+  --success:         #059669;
+  --warning:         #D97706;
+  --danger:          #DC2626;
+  --info:            #2563EB;
+  --success-bg:      rgba(5,150,105,0.10);
+  --warning-bg:      rgba(217,119,6,0.10);
+  --danger-bg:       rgba(220,38,38,0.10);
+  --color-success:   #059669;
+  --color-warning:   #D97706;
+  --color-danger:    #DC2626;
+  --color-info:      #2563EB;
 
-  /* Shadows — light, warm */
-  --shadow-card:     0 1px 3px rgba(26,26,24,0.06), 0 4px 12px rgba(26,26,24,0.04);
-  --shadow-btn:      0 1px 4px rgba(201,149,43,0.20);
-  --shadow-nav:      0 1px 20px rgba(26,26,24,0.08);
-  --shadow-nav-side: 2px 0 20px rgba(26,26,24,0.06);
+  /* Gamification */
+  --streak:          #FF6B35;
+  --streak-bg:       rgba(255,107,53,0.10);
+  --streak-glow:     rgba(255,107,53,0.25);
+  --xp-color:        #C9952B;
+  --level-color:     #8B5CF6;
+  --level-bg:        rgba(139,92,246,0.10);
+
+  /* Subject colors */
+  --subject-math:         #3B82F6;
+  --subject-math-bg:      #EFF6FF;
+  --subject-math-border:  rgba(59,130,246,0.20);
+
+  --subject-physics:      #8B5CF6;
+  --subject-physics-bg:   #F5F3FF;
+  --subject-physics-border: rgba(139,92,246,0.20);
+
+  --subject-chem:         #10B981;
+  --subject-chem-bg:      #ECFDF5;
+  --subject-chem-border:  rgba(16,185,129,0.20);
+
+  --subject-history:      #F59E0B;
+  --subject-history-bg:   #FFFBEB;
+  --subject-history-border: rgba(245,158,11,0.20);
+
+  --subject-lang:         #EC4899;
+  --subject-lang-bg:      #FDF2F8;
+  --subject-lang-border:  rgba(236,72,153,0.20);
+
+  /* Hero dark panel (light modda da tünd qalır — brand qərarı) */
+  --hero-panel:      linear-gradient(135deg, #1A2535 0%, #0F1923 100%);
+  --hero-border:     rgba(201,149,43,0.18);
+  --hero-text:       #F0EEF8;
+  --hero-text-dim:   rgba(240,238,248,0.60);
+
+  /* Shadows — blue-tinted, modern */
+  --shadow-card:     0 1px 3px rgba(15,19,64,0.07), 0 4px 16px rgba(15,19,64,0.05);
+  --shadow-btn:      0 2px 8px rgba(201,149,43,0.25);
+  --shadow-nav:      0 1px 20px rgba(15,19,64,0.08);
+  --shadow-nav-side: 2px 0 20px rgba(15,19,64,0.06);
   --shadow-focus:    0 0 0 3px rgba(201,149,43,0.20);
-  --shadow-glow:     0 0 24px rgba(201,149,43,0.12);
-  --shadow-sm:       0 1px 3px rgba(26,26,24,0.06);
-  --shadow-md:       0 2px 8px rgba(26,26,24,0.08);
+  --shadow-glow:     0 0 28px rgba(201,149,43,0.14);
+  --shadow-sm:       0 1px 4px rgba(15,19,64,0.08);
+  --shadow-md:       0 3px 12px rgba(15,19,64,0.10);
+  --shadow-colored:  0 4px 20px rgba(74,90,224,0.15);
 
   /* Shimmer line (kartların üst kənarı) */
   --shimmer-line: linear-gradient(
     90deg,
     transparent,
-    rgba(201,149,43,0.18),
+    rgba(74,90,224,0.12),
     transparent
   );
 
   /* Scrollbar */
-  --scrollbar:       rgba(26,26,24,0.18);
-  --scrollbar-hover: rgba(26,26,24,0.32);
+  --scrollbar:       rgba(74,90,224,0.18);
+  --scrollbar-hover: rgba(74,90,224,0.35);
 
   /* Layout */
   --sidebar-w: 220px;
@@ -96,8 +132,29 @@
 
   /* Orb colors */
   --orb-1: #C9952B;
-  --orb-2: #8B6914;
+  --orb-2: #4A5AE0;
   --orb-3: #E8B84B;
+
+  /* ── Legacy aliases — köhnə komponentlərlə uyğunluq ── */
+  --bg-primary:         var(--bg-base);
+  --bg-secondary:       var(--bg-input);
+  --bg-tertiary:        var(--bg-muted);
+  --text-primary:       var(--text-1);
+  --text-secondary:     var(--text-2);
+  --text-tertiary:      var(--text-3);
+  --border-accent:      var(--border-hover);
+  --theme-success:      var(--success);
+  --theme-danger:       var(--danger);
+  --theme-warning:      var(--warning);
+  --theme-accent:       var(--accent);
+  --theme-mid:          var(--color-mid);
+  --text-on-dark:       var(--hero-text);
+  --text-on-dark-muted: var(--hero-text-dim);
+  --r-lg:               var(--radius-lg);
+  --r-md:               var(--radius-md);
+  --r-sm:               var(--radius-sm);
+  --r-xl:               var(--radius-xl);
+  --r-pill:             var(--radius-pill);
 }
 
 /* ── Dark mode override ───────────────────────────────── */
@@ -150,6 +207,41 @@
   --warning-bg:      rgba(255,179,71,0.10);
   --danger-bg:       rgba(255,77,109,0.10);
 
+  /* Gamification */
+  --streak:          #FF6B35;
+  --streak-bg:       rgba(255,107,53,0.12);
+  --streak-glow:     rgba(255,107,53,0.35);
+  --xp-color:        #E8B84B;
+  --level-color:     #A78BFA;
+  --level-bg:        rgba(167,139,250,0.12);
+
+  /* Subject colors — dark modda daha parlaq */
+  --subject-math:         #60A5FA;
+  --subject-math-bg:      rgba(96,165,250,0.10);
+  --subject-math-border:  rgba(96,165,250,0.20);
+
+  --subject-physics:      #A78BFA;
+  --subject-physics-bg:   rgba(167,139,250,0.10);
+  --subject-physics-border: rgba(167,139,250,0.20);
+
+  --subject-chem:         #34D399;
+  --subject-chem-bg:      rgba(52,211,153,0.10);
+  --subject-chem-border:  rgba(52,211,153,0.20);
+
+  --subject-history:      #FBBF24;
+  --subject-history-bg:   rgba(251,191,36,0.10);
+  --subject-history-border: rgba(251,191,36,0.20);
+
+  --subject-lang:         #F472B6;
+  --subject-lang-bg:      rgba(244,114,182,0.10);
+  --subject-lang-border:  rgba(244,114,182,0.20);
+
+  /* Hero dark panel (dark modda da eyni) */
+  --hero-panel:      linear-gradient(135deg, #0A1119 0%, #0F1923 100%);
+  --hero-border:     rgba(201,149,43,0.20);
+  --hero-text:       #F0EEE8;
+  --hero-text-dim:   rgba(240,238,232,0.55);
+
   /* Shadows */
   --shadow-card:     none;
   --shadow-btn:      0 1px 4px rgba(201,149,43,0.25);
@@ -159,6 +251,7 @@
   --shadow-glow:     0 0 40px rgba(201,149,43,0.12);
   --shadow-sm:       0 1px 3px rgba(0,0,0,0.25);
   --shadow-md:       0 2px 8px rgba(0,0,0,0.35);
+  --shadow-colored:  0 4px 20px rgba(201,149,43,0.10);
 
   /* Shimmer line */
   --shimmer-line: linear-gradient(
@@ -178,11 +271,7 @@
   --orb-3: #DDB95A;
 }
 
-/* ── Sidebar & Topbar — həmişə tünd kontekst ─────────── *
-   --bg-hero ilə tünd fon aldıqlarından, daxilindəki
-   bütün tokenlar tünd versiyaya override olunur.
-   Bu CSS dəyişən scoping-dir — hardcoded rəng yoxdur.
-   ──────────────────────────────────────────────────── */
+/* ── Sidebar & Topbar — həmişə tünd kontekst ─────────── */
 .sidebar, .topbar {
   --text-1:       #F0EEE8;
   --text-2:       rgba(240,238,232,0.65);

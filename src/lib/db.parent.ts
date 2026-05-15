@@ -1,5 +1,5 @@
 import {
-  doc, addDoc,
+  doc, addDoc, setDoc,
   collection, getDocs, query, where, orderBy,
   updateDoc, serverTimestamp,
 } from 'firebase/firestore'
@@ -91,6 +91,93 @@ export async function dbDisconnectChild(childUid: string) {
   )
   await Promise.all(snap.docs.map(d => updateDoc(d.ref, { status: 'revoked' })))
   return { success: true }
+}
+
+// ── Parental Consent ──────────────────────────────────────────────────────────
+
+export async function dbCreateConsentRequest(
+  parentEmail: string,
+  studentName: string,
+) {
+  const studentUid = uid()
+  const email      = parentEmail.toLowerCase().trim()
+
+  // 1. Store consent request document
+  await setDoc(doc(db, 'consentRequests', studentUid), {
+    studentUid,
+    studentName,
+    parentEmail: email,
+    status:      'pending',
+    requestedAt: serverTimestamp(),
+  })
+
+  // 2. Update student profile with consent status
+  await updateDoc(doc(db, 'userProfiles', studentUid), {
+    consentStatus: 'pending',
+    parentEmail:   email,
+  }).catch(() => {})
+
+  // 3. If parent already has a NIDA account → send in-app notification
+  try {
+    const parentSnap = await getDocs(
+      query(collection(db, 'publicProfiles'), where('email', '==', email))
+    )
+    if (!parentSnap.empty) {
+      const parentUid = parentSnap.docs[0].id
+      await dbWriteNotification(parentUid, {
+        title: '🔔 Valideyn Razılığı Tələb Olunur',
+        body:  `${studentName} NIDA platformasına qeydiyyatdan keçib. ` +
+               `18 yaşından kiçik olduğu üçün sizin razılığınız tələb olunur.`,
+        type:  'permission',
+        data:  { studentUid, consentType: 'parental' },
+      })
+    }
+  } catch { /* parent may not have an account yet — email will cover this */ }
+}
+
+export async function dbGetPendingConsentsByEmail(email: string) {
+  const snap = await getDocs(
+    query(
+      collection(db, 'consentRequests'),
+      where('parentEmail', '==', email.toLowerCase().trim()),
+      where('status',      '==', 'pending'),
+    )
+  )
+  return snap.docs.map(d => ({ id: d.id, ...d.data() as Record<string, any> }))
+}
+
+export async function dbApproveConsent(studentUid: string) {
+  await updateDoc(doc(db, 'consentRequests', studentUid), {
+    status:     'approved',
+    approvedAt: serverTimestamp(),
+    approvedBy: uid(),
+  })
+  await updateDoc(doc(db, 'userProfiles', studentUid), {
+    consentStatus: 'approved',
+  })
+  await dbWriteNotification(studentUid, {
+    title: 'Valideyn razılığı alındı',
+    body:  'Valideynin hesabınızın aktivliyini təsdiqlədi. Bütün funksiyalar açıldı.',
+    type:  'permission',
+  }).catch(() => {})
+}
+
+export async function dbDeclineConsent(studentUid: string) {
+  await updateDoc(doc(db, 'consentRequests', studentUid), {
+    status:     'declined',
+    declinedAt: serverTimestamp(),
+  })
+  await updateDoc(doc(db, 'userProfiles', studentUid), {
+    consentStatus: 'declined',
+  })
+}
+
+export async function dbGetMyConsentStatus() {
+  const profile = await getDocs(
+    query(collection(db, 'consentRequests'), where('studentUid', '==', uid()))
+  )
+  if (profile.empty) return null
+  return profile.docs[0].data() as { status: string; parentEmail: string }
 }
 
 export async function dbGetParentUidsByStudentUid(studentUid: string) {

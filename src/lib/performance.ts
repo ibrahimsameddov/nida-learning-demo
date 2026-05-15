@@ -5,13 +5,13 @@ import { queryClient } from './queryClient'
 // ── Prefetch manager ───────────────────────────────────────────────────────────
 
 export const prefetch = {
-  subjectTopics: (subjectId: string) => {
+  subjectTopics: (_subjectId: string) => {
     queryClient.prefetchQuery({
-      queryKey: ['topics', subjectId],
+      queryKey: ['stats'],
       staleTime: 5 * 60_000,
       queryFn: async () => {
-        const { dbGetStats } = await import('./db')
-        return dbGetStats()
+        const { apiGetMyStatistics } = await import('./api')
+        return apiGetMyStatistics()
       },
     })
   },
@@ -25,36 +25,34 @@ export const prefetch = {
     })
   },
 
-  dashboard: (uid: string) => {
-    if (!uid) return
+  dashboard: (_uid: string) => {
     Promise.all([
       queryClient.prefetchQuery({
-        queryKey: ['stats', uid],
+        queryKey: ['stats'],
         staleTime: 2 * 60_000,
         queryFn: async () => {
-          const { dbGetStats } = await import('./db')
-          return dbGetStats(uid)
+          const { apiGetMyStatistics } = await import('./api')
+          return apiGetMyStatistics()
         },
       }),
       queryClient.prefetchQuery({
-        queryKey: ['notifications', uid],
+        queryKey: ['notifications'],
         staleTime: 60_000,
         queryFn: async () => {
-          const { dbGetNotifications } = await import('./db')
-          return dbGetNotifications()
+          const { apiGetMyNotifications } = await import('./api')
+          return apiGetMyNotifications()
         },
       }),
     ]).catch(() => {})
   },
 
-  messages: (uid: string) => {
-    if (!uid) return
+  messages: (_uid: string) => {
     queryClient.prefetchQuery({
-      queryKey: ['sent-messages', uid],
+      queryKey: ['sent-messages'],
       staleTime: 60_000,
       queryFn: async () => {
-        const { dbGetSentMessages } = await import('./db')
-        return dbGetSentMessages()
+        const { apiGetSentMessages } = await import('./api')
+        return apiGetSentMessages()
       },
     })
   },

@@ -10,44 +10,61 @@ import { getExamData }                    from '@/types/examData'
 import { useAuthStore }                   from '@/stores/authStore'
 import { useHoverPrefetch, prefetch }     from '@/lib/performance'
 
-function SubjectButton({ subj, color, onClick }) {
+// Map subject titles to design-system tokens
+const SUBJ_TOKENS: Record<string, { color: string; bg: string }> = {
+  'Riyaziyyat':       { color: 'var(--subject-math)',    bg: 'var(--subject-math-bg)'    },
+  'Azərbaycan dili':  { color: 'var(--subject-lang)',    bg: 'var(--subject-lang-bg)'    },
+  'Xarici dil':       { color: 'var(--subject-lang)',    bg: 'var(--subject-lang-bg)'    },
+  'Fizika':           { color: 'var(--subject-physics)', bg: 'var(--subject-physics-bg)' },
+  'Kimya':            { color: 'var(--subject-chem)',    bg: 'var(--subject-chem-bg)'    },
+  'Biologiya':        { color: 'var(--subject-chem)',    bg: 'var(--subject-chem-bg)'    },
+  'Tarix':            { color: 'var(--subject-history)', bg: 'var(--subject-history-bg)' },
+  'Coğrafiya':        { color: 'var(--subject-history)', bg: 'var(--subject-history-bg)' },
+}
+const subjTokens = (title: string, fallback: string) =>
+  SUBJ_TOKENS[title] ?? { color: fallback, bg: `color-mix(in srgb, ${fallback} 12%, transparent)` }
+
+function SubjectButton({ subj, examColor, onClick }) {
   const { onMouseEnter: prefetchIn, onMouseLeave: prefetchOut } =
     useHoverPrefetch(() => prefetch.subjectTopics(subj.key))
+  const { color, bg } = subjTokens(subj.title, examColor)
 
   return (
     <motion.button
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.97 }}
+      whileHover={{ scale: 1.03, y: -2 }}
+      whileTap={{ scale: 0.96 }}
       onClick={onClick}
+      onMouseEnter={prefetchIn}
+      onMouseLeave={prefetchOut}
       style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        gap: 8, padding: '18px 10px', borderRadius: 16, cursor: 'pointer',
-        background: 'rgba(255,255,255,0.03)',
-        border: '0.5px solid var(--border)',
-        textAlign: 'center', transition: 'border-color 0.2s, background 0.2s',
-        minHeight: 90,
-      }}
-      onMouseEnter={e => {
-        prefetchIn()
-        e.currentTarget.style.borderColor = color
-        e.currentTarget.style.background  = `color-mix(in srgb, ${color} 8%, rgba(255,255,255,0.03))`
-      }}
-      onMouseLeave={e => {
-        prefetchOut()
-        e.currentTarget.style.borderColor = 'var(--border)'
-        e.currentTarget.style.background  = 'rgba(255,255,255,0.03)'
+        gap: 8, padding: '18px 12px', borderRadius: 'var(--radius-xl)', cursor: 'pointer',
+        background: 'var(--bg-card)',
+        border: `1.5px solid ${color}20`,
+        textAlign: 'center',
+        boxShadow: 'var(--shadow-card)',
+        minHeight: 100,
+        transition: 'box-shadow 0.2s, transform 0.2s',
       }}
     >
       <span style={{
-        width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+        width: 44, height: 44, borderRadius: 'var(--radius-md)', flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 20,
-        background: `color-mix(in srgb, ${color} 15%, rgba(255,255,255,0.04))`,
-        border: `1px solid ${color}33`,
+        fontSize: 22, background: bg,
+        border: `1.5px solid ${color}25`,
       }}>{subj.icon}</span>
-      <span style={{ fontWeight: 600, fontSize: 12, color: 'var(--text-1)', lineHeight: 1.3 }}>
+      <span style={{ fontWeight: 700, fontSize: 12, color: 'var(--text-1)', lineHeight: 1.3 }}>
         {subj.title}
       </span>
+      {subj.topics?.length > 0 && (
+        <span style={{
+          fontSize: 10, fontWeight: 700, color,
+          background: bg, padding: '2px 7px',
+          borderRadius: 'var(--radius-pill)',
+        }}>
+          {subj.topics.reduce((s, t) => s + (t.qCount ?? 0), 0)} sual
+        </span>
+      )}
     </motion.button>
   )
 }
@@ -59,9 +76,10 @@ function ExamSection({ exam, navigate, delay }) {
       animate={{ opacity: 1,  y: 0  }}
       transition={{ ...SPRING, delay }}
       style={{
-        background: 'var(--bg-card)', border: '0.5px solid var(--border)',
-        borderRadius: 20, padding: '20px 18px',
-        borderTop: `2px solid ${exam.color}`,
+        background: 'var(--bg-card)', border: '1px solid var(--border-card)',
+        borderRadius: 'var(--radius-2xl)', padding: '20px 18px',
+        borderTop: `3px solid ${exam.color}`,
+        boxShadow: 'var(--shadow-card)',
       }}
     >
       {/* Başlıq */}
@@ -110,7 +128,7 @@ function ExamSection({ exam, navigate, delay }) {
             <SubjectButton
               key={subj.key}
               subj={subj}
-              color={exam.color}
+              examColor={exam.color}
               onClick={() => navigate(
                 `/topic-quiz?exam=${exam.id}&subject=${encodeURIComponent(subj.title)}`
               )}

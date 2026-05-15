@@ -22,8 +22,10 @@ export const registerSchema = z.object({
   grade:       z.nativeEnum(Grade).optional(),
   group:       z.nativeEnum(Group).optional(),
   foreignLang: z.enum([Subject.English, Subject.Russian]).optional(),
-  subjects:    z.array(z.string()).optional(),
-  phone:       z.string().optional(),
+  subjects:     z.array(z.string()).optional(),
+  phone:        z.string().optional(),
+  dateOfBirth:  z.string().optional(),   // YYYY-MM-DD
+  parentEmail:  z.string().email().optional().or(z.literal('')),
 })
 
 export const examCreateSchema = z.object({

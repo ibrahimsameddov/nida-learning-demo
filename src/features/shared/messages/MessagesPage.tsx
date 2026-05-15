@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/authStore'
-import { dbGetSentMessages, dbSendMessage } from '@/lib/db'
+import { apiGetSentMessages, apiGetReceivedMessages, apiSendMessage, apiMarkMessageRead } from '@/lib/api'
 import { haptic } from '@/lib/native'
 import ConversationList from './components/ConversationList'
 import MessageBubble    from './components/MessageBubble'
@@ -12,14 +12,29 @@ import QuickReplyBar    from './components/QuickReplyBar'
 
 const SPRING = { type: 'spring', stiffness: 280, damping: 28 }
 
-function buildConversations(msgs: any[]) {
+function normaliseMsg(msg: any, myBackendId: number) {
+  // Adapt MessageDto → internal shape expected by conversation components
+  const isSent = msg.fromId === myBackendId
+  const peerId = isSent ? (msg.toId ?? msg.to) : (msg.fromId ?? msg.from)
+  return {
+    ...msg,
+    to:       String(peerId ?? msg.to ?? msg.id),
+    toLabel:  msg.toLabel ?? msg.toFullName ?? msg.fromFullName ?? String(peerId ?? ''),
+    text:     msg.content ?? msg.text ?? '',
+    isSent,
+  }
+}
+
+function buildConversations(msgs: any[], myBackendId: number) {
   const map = new Map<string, any>()
-  const sorted = [...msgs].sort((a, b) => (b.sentAt ?? '').localeCompare(a.sentAt ?? ''))
-  for (const msg of sorted) {
-    const key = msg.to ?? msg.toLabel ?? msg.id
+  const normalised = msgs
+    .map(m => normaliseMsg(m, myBackendId))
+    .sort((a, b) => (b.sentAt ?? '').localeCompare(a.sentAt ?? ''))
+  for (const msg of normalised) {
+    const key = msg.to
     if (!map.has(key)) {
       map.set(key, {
-        id: key, label: msg.toLabel ?? key,
+        id: key, label: msg.toLabel,
         mode: msg.mode ?? 'direct',
         lastMsg: msg.text, lastTime: msg.sentAt ?? '',
         messages: [],
@@ -131,30 +146,39 @@ export default function MessagesPage({
   onSendMessage,
   mobileThread,
 }: Props) {
-  const myUid  = useAuthStore(s => s.user?.id ?? '')
-  const qc     = useQueryClient()
+  const myUid        = useAuthStore(s => s.user?.id ?? '')
+  const myBackendId  = useAuthStore(s => s.backendId ?? -1)
+  const qc           = useQueryClient()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [mobileView, setMobileView]  = useState<'list' | 'thread'>('list')
 
-  // Internal messages (fallback when no external source)
-  const { data: sentMsgs = [], isLoading: internalLoading } = useQuery({
-    queryKey:  ['sent-messages', myUid],
+  // Internal messages (fallback when no external source) — fetch both directions
+  const { data: allMsgs = [], isLoading: internalLoading } = useQuery({
+    queryKey:  ['all-messages', myUid],
     enabled:   !externalConversations && !!myUid,
     staleTime: 60_000,
-    queryFn:   () => dbGetSentMessages(),
+    queryFn:   async () => {
+      const [sent, received] = await Promise.all([
+        apiGetSentMessages().catch(() => []),
+        apiGetReceivedMessages().catch(() => []),
+      ])
+      // Deduplicate by id
+      const seen = new Set<number>()
+      return [...sent, ...received].filter(m => { if (seen.has(m.id)) return false; seen.add(m.id); return true })
+    },
   })
 
   const sendMutation = useMutation({
     mutationFn: async ({ to, toLabel, text, mode }: any) => {
       if (onSendMessage) return onSendMessage(to, toLabel, text, mode)
-      return dbSendMessage({ to, toLabel, mode: 'direct', text })
+      return apiSendMessage({ toId: Number(to), content: text, mode: mode ?? 'direct' })
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['sent-messages', myUid] })
+      qc.invalidateQueries({ queryKey: ['all-messages', myUid] })
     },
   })
 
-  const conversations = externalConversations ?? buildConversations(sentMsgs)
+  const conversations = externalConversations ?? buildConversations(allMsgs, myBackendId)
   const isLoading     = externalLoading ?? internalLoading
   const selected      = conversations.find(c => c.id === selectedId) ?? null
 
@@ -162,6 +186,13 @@ export default function MessagesPage({
     haptic.selection()
     setSelectedId(id)
     setMobileView('thread')
+    // Mark unread messages in this conversation as read
+    const conv = conversations.find((c: any) => c.id === id)
+    if (conv) {
+      conv.messages
+        .filter((m: any) => !m.isSent && !m.isRead)
+        .forEach((m: any) => apiMarkMessageRead(m.id).catch(() => {}))
+    }
   }
 
   const handleSend = (to: string, toLabel: string, text: string) => {

@@ -7,10 +7,12 @@ type AuthUser = Student | Teacher | Parent
 
 interface AuthState {
   user:         AuthUser | null
+  backendId:    number | null
   token:        string | null
   refreshToken: string | null
   isLoading:    boolean
   setUser:      (user: AuthUser) => void
+  setBackendId: (id: number) => void
   setToken:     (token: string, refresh?: string) => void
   logout:       () => void
   isRole:       (role: Role) => boolean
@@ -20,17 +22,20 @@ export const useAuthStore = create<AuthState>()(
   persist(
     immer((set, get) => ({
       user:         null,
+      backendId:    null,
       token:        null,
       refreshToken: null,
       isLoading:    false,
 
-      setUser:  (user)           => set(s => { s.user  = user }),
+      setUser:      (user) => set(s => { s.user      = user }),
+      setBackendId: (id)   => set(s => { s.backendId = id }),
       setToken: (token, refresh) => set(s => {
         s.token        = token
         s.refreshToken = refresh ?? s.refreshToken
       }),
       logout: () => set(s => {
         s.user         = null
+        s.backendId    = null
         s.token        = null
         s.refreshToken = null
       }),
@@ -39,7 +44,7 @@ export const useAuthStore = create<AuthState>()(
     {
       name:    'nida-auth',
       storage: createJSONStorage(() => localStorage),
-      partialize: s => ({ token: s.token, refreshToken: s.refreshToken, user: s.user }),
+      partialize: s => ({ token: s.token, refreshToken: s.refreshToken, user: s.user, backendId: s.backendId }),
     }
   )
 )

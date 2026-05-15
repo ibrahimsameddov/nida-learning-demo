@@ -4,6 +4,21 @@ import { useNavigate } from 'react-router-dom'
 import { useNotificationStore } from '@/stores/notificationStore'
 import { apiGetMyNotifications, apiMarkNotificationRead, apiMarkAllNotificationsRead } from '@/lib/api'
 import type { Notification } from '@/types/models'
+import type { NotificationDto } from '@/types/backend'
+
+function dtoToNotification(dto: NotificationDto): Notification {
+  const knownTypes = ['exam', 'message', 'permission', 'weekly', 'streak'] as const
+  const type = knownTypes.includes(dto.type as any) ? dto.type as Notification['type'] : 'message'
+  return {
+    id:        String(dto.id),
+    userId:    String(dto.userId),
+    type,
+    title:     dto.title,
+    body:      dto.body,
+    read:      dto.isRead,
+    createdAt: dto.createdAt ?? new Date().toISOString(),
+  }
+}
 
 const TYPE_ICON: Record<string, string> = {
   exam:       '📝',
@@ -24,15 +39,16 @@ function timeAgo(dateStr: string) {
   return `${days} gün əvvəl`
 }
 
-/** Hook: Firestore notifications fetch + store sync */
+/** Hook: backend notifications fetch + store sync */
 export function useNotificationSync() {
   const { add, items } = useNotificationStore()
 
   useEffect(() => {
     apiGetMyNotifications()
-      .then((ns: any[]) => {
-        ns.forEach(n => {
-          if (!items.find(i => i.id === n.id)) add(n as Notification)
+      .then((ns: NotificationDto[]) => {
+        ns.forEach((dto: NotificationDto) => {
+          const n = dtoToNotification(dto)
+          if (!items.find((i: Notification) => i.id === n.id)) add(n)
         })
       })
       .catch(() => {/* silent */})

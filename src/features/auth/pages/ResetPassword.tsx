@@ -1,32 +1,44 @@
-import { useState }        from 'react'
-import { useForm }         from 'react-hook-form'
-import { zodResolver }     from '@hookform/resolvers/zod'
-import { Link }            from 'react-router-dom'
-import { z }               from 'zod'
-import { api }             from '../../../lib/api'
+import { useState, useEffect } from 'react'
+import { useSearchParams, useNavigate, Link } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { apiResetPassword } from '../../../lib/api'
 
 const schema = z.object({
-  email: z.string().email('Düzgün e-poçt daxil edin'),
+  password: z.string().min(8, 'Minimum 8 simvol'),
+  confirm:  z.string(),
+}).refine(d => d.password === d.confirm, {
+  message: 'Şifrələr uyğun gəlmir',
+  path: ['confirm'],
 })
 type FormData = z.infer<typeof schema>
 
-export default function ForgotPassword() {
-  const [sent,  setSent]  = useState(false)
+export default function ResetPassword() {
+  const [params]   = useSearchParams()
+  const navigate   = useNavigate()
+  const token      = params.get('token') ?? ''
+  const [done,  setDone]  = useState(false)
   const [error, setError] = useState('')
 
-  const { register, handleSubmit, getValues, formState: { errors, isSubmitting } } = useForm<FormData>({
+  useEffect(() => {
+    if (!token) setError('Keçərsiz və ya vaxtı keçmiş link.')
+  }, [token])
+
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
   })
 
-  const onSubmit = async ({ email }: FormData) => {
+  const onSubmit = async ({ password }: FormData) => {
     setError('')
     try {
-      await api.post('/api/auth/forgot-password', { email })
-      setSent(true)
+      await apiResetPassword(token, password)
+      setDone(true)
+      setTimeout(() => navigate('/login'), 3000)
     } catch (err: any) {
       const status = err?.response?.status
-      if (status === 404) setError('Bu e-poçtla qeydiyyat tapılmadı.')
-      else                setError('Xəta baş verdi. Yenidən cəhd edin.')
+      if (status === 400 || status === 404) setError('Link keçərsiz və ya vaxtı bitib.')
+      else setError('Xəta baş verdi. Yenidən cəhd edin.')
     }
   }
 
@@ -51,13 +63,13 @@ export default function ForgotPassword() {
             width: 64, height: 64, borderRadius: 16, marginBottom: 12,
             background: 'var(--bg-card)', border: '0.5px solid var(--border)',
             fontSize: 28,
-          }}>🔑</div>
+          }}>🔐</div>
           <h1 style={{
             fontFamily: "'Lexend Deca',sans-serif", fontWeight: 800, fontSize: 22,
             color: 'var(--text-1)', marginBottom: 6,
-          }}>Şifrəni sıfırla</h1>
+          }}>Yeni şifrə</h1>
           <p style={{ color: 'var(--text-3)', fontSize: 13 }}>
-            E-poçtunuzu daxil edin, sıfırlama linki göndərək
+            Hesabınız üçün yeni şifrə təyin edin
           </p>
         </div>
 
@@ -66,15 +78,12 @@ export default function ForgotPassword() {
           borderRadius: 20, padding: '28px 24px',
           backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
         }}>
-          {sent ? (
+          {done ? (
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 48, marginBottom: 16 }}>📬</div>
-              <p style={{ fontWeight: 600, color: 'var(--text-1)', marginBottom: 8 }}>
-                Göndərildi!
-              </p>
+              <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
+              <p style={{ fontWeight: 600, color: 'var(--text-1)', marginBottom: 8 }}>Şifrə dəyişdirildi!</p>
               <p style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 20 }}>
-                <span style={{ color: 'var(--primary)', fontWeight: 600 }}>{getValues('email')}</span>
-                {' '}ünvanına sıfırlama linki göndərildi. Spam qutusunu da yoxlayın.
+                Giriş səhifəsinə yönləndirilirsiniz...
               </p>
               <Link to="/login" style={{
                 display: 'block', textAlign: 'center', padding: '12px',
@@ -82,23 +91,11 @@ export default function ForgotPassword() {
                 color: 'var(--primary)', fontWeight: 600, fontSize: 14,
                 textDecoration: 'none',
               }}>
-                ← Giriş səhifəsinə qayıt
+                Daxil ol →
               </Link>
             </div>
           ) : (
             <form onSubmit={handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div>
-                <label className="label-sm">E-poçt ünvanı</label>
-                <input
-                  type="email"
-                  className="input"
-                  placeholder="ali@example.com"
-                  {...register('email')}
-                />
-                {errors.email && (
-                  <p style={{ marginTop: 4, fontSize: 11, color: 'var(--danger)' }}>{errors.email.message}</p>
-                )}
-              </div>
 
               {error && (
                 <div style={{
@@ -110,15 +107,43 @@ export default function ForgotPassword() {
                 </div>
               )}
 
+              <div>
+                <label className="label-sm">Yeni şifrə</label>
+                <input
+                  type="password"
+                  className="input"
+                  placeholder="Minimum 8 simvol"
+                  disabled={!token}
+                  {...register('password')}
+                />
+                {errors.password && (
+                  <p style={{ marginTop: 4, fontSize: 11, color: 'var(--danger)' }}>{errors.password.message}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="label-sm">Şifrəni təsdiqləyin</label>
+                <input
+                  type="password"
+                  className="input"
+                  placeholder="Şifrəni təkrarlayın"
+                  disabled={!token}
+                  {...register('confirm')}
+                />
+                {errors.confirm && (
+                  <p style={{ marginTop: 4, fontSize: 11, color: 'var(--danger)' }}>{errors.confirm.message}</p>
+                )}
+              </div>
+
               <button
                 type="submit"
                 className="btn btn-primary btn-full btn-lg"
-                disabled={isSubmitting}
+                disabled={isSubmitting || !token}
                 style={{ marginTop: 4 }}
               >
                 {isSubmitting
                   ? <span className="spinner" style={{ width: 18, height: 18 }} />
-                  : 'Sıfırlama linki göndər'}
+                  : 'Şifrəni yenilə'}
               </button>
 
               <Link to="/login" style={{

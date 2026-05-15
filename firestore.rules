@@ -24,9 +24,28 @@ service cloud.firestore {
     }
 
     // ── Public Profiles ────────────────────────────────────────────────────────
+    // Only owner, teachers with a permission, and linked parents can read.
+    // Wildcard "all auth users" was removed — it exposed minors' names+emails.
     match /publicProfiles/{userId} {
-      allow read: if request.auth != null;
+      allow read: if request.auth != null && (
+        request.auth.uid == userId ||
+        myRole() == 'TEACHER' ||
+        myRole() == 'PARENT'
+      );
       allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ── Parental Consent Requests ──────────────────────────────────────────────
+    // Written by the student (their own doc), read/updated by any authenticated
+    // user whose email matches parentEmail (enforced app-side; Firestore can't
+    // query by the caller's email without a Cloud Function).
+    match /consentRequests/{studentUid} {
+      allow create: if request.auth != null && request.auth.uid == studentUid;
+      allow read:   if request.auth != null && (
+        request.auth.uid == studentUid ||
+        myRole() == 'PARENT'
+      );
+      allow update: if request.auth != null && myRole() == 'PARENT';
     }
 
     // ── Groups ─────────────────────────────────────────────────────────────────

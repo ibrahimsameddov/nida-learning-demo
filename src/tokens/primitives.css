@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════
-   NIDA Design System — Primitive Tokens v1.0
+   NIDA Design System — Primitive Tokens v2.0
    Raw values only. Never reference these in components.
    Use semantic tokens instead.
 ═══════════════════════════════════════════════════════ */
@@ -17,6 +17,21 @@
   --navy-300: #4070C0;
   --navy-200: #6090D8;
   --navy-100: #90B8F0;
+
+  /* ── Blue-Indigo (light mode base) ───────────────── */
+  --blue-950: #0B0E2E;
+  --blue-900: #111540;
+  --blue-800: #1A1F5E;
+  --blue-700: #2A3390;
+  --blue-600: #3A49C0;
+  --blue-500: #4A5AE0;
+  --blue-400: #6B7EF0;
+  --blue-300: #8FA4F8;
+  --blue-200: #C0CCFC;
+  --blue-150: #D8E0FF;
+  --blue-100: #E5EAFF;
+  --blue-50:  #EEF2FF;
+  --blue-25:  #F5F7FF;
 
   /* ── Gold Palette ─────────────────────────────────── */
   --gold-900: #4A3510;
@@ -43,13 +58,45 @@
   --neutral-900: #111827;
   --neutral-950: #060B14;
 
+  /* ── Subject Palette ──────────────────────────────── */
+  --math-600:     #1D4ED8;
+  --math-500:     #3B82F6;
+  --math-400:     #60A5FA;
+  --math-100:     #DBEAFE;
+  --math-50:      #EFF6FF;
+
+  --physics-600:  #6D28D9;
+  --physics-500:  #8B5CF6;
+  --physics-400:  #A78BFA;
+  --physics-100:  #EDE9FE;
+  --physics-50:   #F5F3FF;
+
+  --chem-600:     #047857;
+  --chem-500:     #10B981;
+  --chem-400:     #34D399;
+  --chem-100:     #D1FAE5;
+  --chem-50:      #ECFDF5;
+
+  --history-600:  #B45309;
+  --history-500:  #F59E0B;
+  --history-400:  #FBBF24;
+  --history-100:  #FEF3C7;
+  --history-50:   #FFFBEB;
+
+  --lang-600:     #BE185D;
+  --lang-500:     #EC4899;
+  --lang-400:     #F472B6;
+  --lang-100:     #FCE7F3;
+  --lang-50:      #FDF2F8;
+
   /* ── Feedback Palette ─────────────────────────────── */
   --green-500:  #00E5A0;
   --green-400:  #68D391;
   --red-500:    #FF4D6D;
   --red-400:    #FC8181;
-  --orange-500: #FFB347;
-  --orange-400: #F6AD55;
+  --orange-600: #EA580C;
+  --orange-500: #FF6B35;
+  --orange-400: #FFB347;
 
   /* ── Spacing (4px grid) ───────────────────────────── */
   --space-0:  0px;

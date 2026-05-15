@@ -1,6 +1,5 @@
 // @ts-nocheck
-import { addDoc, collection, doc, updateDoc, serverTimestamp, getDoc, getDocs, query, where } from 'firebase/firestore'
-import { db } from './firebaseConfig'
+// Firebase removed — types and pure helpers remain; Firestore functions are stubs.
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -122,50 +121,27 @@ function buildSystemNotifText(type: SystemNotificationType, data: Record<string,
 }
 
 // ── Trigger system notification ────────────────────────────────────────────────
+// Use apiSendNotification from api.ts instead — this stub exists for compatibility.
 
 export async function triggerSystemNotification(
-  uid: string,
+  _uid: string,
   type: SystemNotificationType,
   data: Record<string, any>,
-  forwardToParent = false,
+  _forwardToParent = false,
 ): Promise<void> {
-  const { title, body } = buildSystemNotifText(type, data)
-
-  const notif = {
-    uid, type, title, body,
-    contextType: data.contextType ?? null,
-    contextId:   data.contextId   ?? null,
-    isRead:      false,
-    forwardToParent,
-    createdAt: serverTimestamp(),
-  }
-
-  await addDoc(collection(db, 'userProfiles', uid, 'notifications'), notif)
-
-  if (forwardToParent) {
-    const parentSnap = await getDocs(
-      query(collection(db, 'parentRequests'), where('childUid', '==', uid), where('status', '==', 'accepted'))
-    ).catch(() => null)
-    if (parentSnap && !parentSnap.empty) {
-      const parentUids = [...new Set(parentSnap.docs.map(d => (d.data() as any).parentUid as string).filter(Boolean))]
-      await Promise.all(parentUids.map(pUid =>
-        addDoc(collection(db, 'userProfiles', pUid, 'notifications'), {
-          ...notif,
-          uid: pUid,
-          parentUid: pUid,
-          body: `(Uşağınız) ${body}`,
-        }).catch(() => {})
-      ))
-    }
-  }
+  try {
+    const { apiSendNotification } = await import('./api')
+    const { title, body } = buildSystemNotifText(type, data)
+    await apiSendNotification({ type, title, body, ...data })
+  } catch {}
 }
 
 // ── Mark message read ─────────────────────────────────────────────────────────
 
-export async function markMessageRead(messageId: string, uid: string): Promise<void> {
+export async function markMessageRead(messageId: string, _uid: string): Promise<void> {
   try {
-    const ref = doc(db, 'userProfiles', uid, 'notifications', messageId)
-    await updateDoc(ref, { isRead: true, readAt: serverTimestamp() })
+    const { apiMarkMessageRead } = await import('./api')
+    await apiMarkMessageRead(Number(messageId))
   } catch {}
 }
 

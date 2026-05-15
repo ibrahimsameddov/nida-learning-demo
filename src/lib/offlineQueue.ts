@@ -30,20 +30,20 @@ function saveQueue(queue: QueuedAction[]): void {
 
 async function executeAction(action: QueuedAction): Promise<void> {
   // Lazy import to avoid circular deps
-  const { dbSaveTestResult, dbMarkNotificationRead } = await import('./db')
+  const { dbSaveTestResult, apiMarkNotificationRead } = await import('./api')
 
   switch (action.type) {
     case 'save_result':
       await dbSaveTestResult(action.data as any)
       break
     case 'mark_notification_read':
-      await dbMarkNotificationRead(action.data.id)
+      await apiMarkNotificationRead(action.data.id)
       break
-    case 'mark_read':
-      // handled by markMessageRead from messaging.ts
-      const { markMessageRead } = await import('./messaging')
-      await markMessageRead(action.data.messageId, action.data.uid)
+    case 'mark_read': {
+      const { apiMarkMessageRead } = await import('./api')
+      await apiMarkMessageRead(Number(action.data.messageId))
       break
+    }
     default:
       break
   }

@@ -1,40 +1,17 @@
-import { useState, useEffect, useRef } from 'react'
-import { useNavigate }                 from 'react-router-dom'
-import { checkEmailVerified, sendVerificationEmail, auth } from '../services/firebase'
+import { useState }    from 'react'
+import { Link }        from 'react-router-dom'
+import { api }         from '../../../lib/api'
+import { useAuthStore } from '../../../stores/authStore'
 
 export default function EmailVerify() {
-  const navigate               = useNavigate()
-  const [checking, setChecking] = useState(false)
-  const [resent,   setResent]   = useState(false)
-  const [error,    setError]    = useState('')
-  const intervalRef            = useRef<ReturnType<typeof setInterval> | null>(null)
-
-  const email = auth.currentUser?.email ?? ''
-
-  // Poll every 3 s for verification
-  useEffect(() => {
-    intervalRef.current = setInterval(async () => {
-      const verified = await checkEmailVerified()
-      if (verified) {
-        clearInterval(intervalRef.current!)
-        navigate('/onboarding/group', { replace: true })
-      }
-    }, 3000)
-    return () => clearInterval(intervalRef.current!)
-  }, [navigate])
-
-  const handleCheck = async () => {
-    setChecking(true)
-    setError('')
-    const verified = await checkEmailVerified()
-    setChecking(false)
-    if (verified) navigate('/onboarding/group', { replace: true })
-    else setError('E-poçt hələ doğrulanmayıb. Zəhmət olmasa emailinizdəki linki klik edin.')
-  }
+  const [resent,  setResent]  = useState(false)
+  const [error,   setError]   = useState('')
+  const email = useAuthStore(s => s.user?.email ?? '')
 
   const handleResend = async () => {
+    setError('')
     try {
-      await sendVerificationEmail()
+      await api.post('/api/auth/resend-verification', { email })
       setResent(true)
       setTimeout(() => setResent(false), 6000)
     } catch {
@@ -62,7 +39,7 @@ export default function EmailVerify() {
         <div style={{ fontSize: 56, marginBottom: 16 }}>📧</div>
 
         <h1 style={{
-          fontFamily: "'Lexend Deca','Lexend Deca',sans-serif", fontWeight: 800, fontSize: 24,
+          fontFamily: "'Lexend Deca', sans-serif", fontWeight: 800, fontSize: 24,
           color: 'var(--text-1)', marginBottom: 8,
         }}>E-poçtu doğrulayın</h1>
 
@@ -87,7 +64,7 @@ export default function EmailVerify() {
             1. E-poçt qutunuzu açın<br />
             2. NIDA-dan gələn emaili tapın<br />
             3. <strong style={{ color: 'var(--text-1)' }}>"E-poçtu doğrula"</strong> linkini klik edin<br />
-            4. Bu səhifəyə qayıdın — avtomatik keçid olacaq
+            4. Sonra aşağıdakı düymə ilə daxil olun
           </p>
         </div>
 
@@ -101,16 +78,13 @@ export default function EmailVerify() {
           </div>
         )}
 
-        <button
+        <Link
+          to="/login"
           className="btn btn-primary btn-full btn-lg"
-          style={{ marginBottom: 12 }}
-          disabled={checking}
-          onClick={handleCheck}
+          style={{ display: 'block', marginBottom: 12, textDecoration: 'none' }}
         >
-          {checking
-            ? <span className="spinner" style={{ width: 18, height: 18 }} />
-            : 'Doğrulandım →'}
-        </button>
+          Daxil ol →
+        </Link>
 
         <p style={{ fontSize: 13, color: 'var(--text-3)' }}>
           Email gəlmədi?{' '}

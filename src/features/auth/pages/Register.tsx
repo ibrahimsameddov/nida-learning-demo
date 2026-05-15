@@ -4,8 +4,9 @@ import { zodResolver }                 from '@hookform/resolvers/zod'
 import { Link, useNavigate }           from 'react-router-dom'
 import { registerSchema, type RegisterInput } from '../../../lib/validations'
 import { Role, Grade, Subject }        from '../../../types/models'
-import { firebaseRegister, updateUserProfile } from '../services/firebase'
-import { dbSaveProfile, generateUniqueId } from '../../../lib/db'
+import { useAuthStore }                from '../../../stores/authStore'
+import { api }                         from '../../../lib/api'
+import { sendParentalConsentEmail } from '../../../lib/email'
 
 // ── Azərbaycan şəhərləri ──────────────────────────────────────────────────────
 const AZ_CITIES = [
@@ -21,16 +22,16 @@ const AZ_CITIES = [
 ]
 
 const TEACHER_SUBJECTS = [
-  { id: Subject.Math,        label: 'Riyaziyyat',      icon: '📐' },
-  { id: Subject.Azerbaijani, label: 'Azərbaycan dili', icon: '📖' },
-  { id: Subject.English,     label: 'Xarici dil',      icon: '🇬🇧' },
-  { id: Subject.Physics,     label: 'Fizika',          icon: '⚡' },
-  { id: Subject.Chemistry,   label: 'Kimya',           icon: '🧪' },
-  { id: Subject.Biology,     label: 'Biologiya',       icon: '🧬' },
-  { id: Subject.History,     label: 'Tarix',           icon: '🏛️' },
-  { id: Subject.Geography,   label: 'Coğrafiya',       icon: '🌍' },
-  { id: Subject.Literature,  label: 'Ədəbiyyat',       icon: '📚' },
-  { id: Subject.Russian,     label: 'Rus dili',        icon: '🇷🇺' },
+  { id: Subject.Math,        label: 'Riyaziyyat',      icon: '📐', color: '#3B82F6', bg: 'rgba(59,130,246,0.12)',  border: 'rgba(59,130,246,0.35)'  },
+  { id: Subject.Azerbaijani, label: 'Azərbaycan dili', icon: '📖', color: '#EC4899', bg: 'rgba(236,72,153,0.12)', border: 'rgba(236,72,153,0.35)' },
+  { id: Subject.English,     label: 'Xarici dil',      icon: '🇬🇧', color: '#06B6D4', bg: 'rgba(6,182,212,0.12)',  border: 'rgba(6,182,212,0.35)'  },
+  { id: Subject.Physics,     label: 'Fizika',          icon: '⚡', color: '#8B5CF6', bg: 'rgba(139,92,246,0.12)', border: 'rgba(139,92,246,0.35)' },
+  { id: Subject.Chemistry,   label: 'Kimya',           icon: '🧪', color: '#10B981', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.35)' },
+  { id: Subject.Biology,     label: 'Biologiya',       icon: '🧬', color: '#00C9A7', bg: 'rgba(0,201,167,0.12)',  border: 'rgba(0,201,167,0.35)'  },
+  { id: Subject.History,     label: 'Tarix',           icon: '🏛️', color: '#F59E0B', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.35)' },
+  { id: Subject.Geography,   label: 'Coğrafiya',       icon: '🌍', color: '#F97316', bg: 'rgba(249,115,22,0.12)', border: 'rgba(249,115,22,0.35)' },
+  { id: Subject.Literature,  label: 'Ədəbiyyat',       icon: '📚', color: '#A855F7', bg: 'rgba(168,85,247,0.12)', border: 'rgba(168,85,247,0.35)' },
+  { id: Subject.Russian,     label: 'Rus dili',        icon: '🇷🇺', color: '#EF4444', bg: 'rgba(239,68,68,0.12)',  border: 'rgba(239,68,68,0.35)'  },
 ]
 
 // ── CityInput ─────────────────────────────────────────────────────────────────
@@ -99,17 +100,18 @@ function CityInput({ value, onChange, error }: {
       {open && filtered.length > 0 && (
         <ul ref={listRef} style={{
           position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0,
-          background: 'var(--bg-primary)', border: '0.5px solid var(--border)',
-          borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-          zIndex: 999, maxHeight: 220, overflowY: 'auto', padding: '4px',
+          background: 'var(--bg-card-solid)', border: '1px solid var(--border-hover)',
+          borderRadius: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.10)',
+          zIndex: 999, maxHeight: 220, overflowY: 'auto', padding: '6px',
           listStyle: 'none', margin: 0,
         }}>
           {filtered.map((city, i) => (
             <li key={city} onMouseDown={() => select(city)} onMouseEnter={() => setFocused(i)}
               style={{
-                padding: '9px 14px', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500,
+                padding: '10px 14px', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500,
                 color: i === focused ? 'var(--primary)' : 'var(--text-1)',
-                background: i === focused ? 'rgba(0,212,255,0.08)' : 'transparent',
+                background: i === focused ? 'var(--bg-active)' : 'transparent',
+                transition: 'background 0.12s',
               }}>
               {highlight(city, query)}
             </li>
@@ -173,7 +175,7 @@ function SubjectChips({ selected, onChange }: { selected: string[]; onChange: (s
     else if (selected.length < 2) onChange([...selected, id])
   }
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
       {TEACHER_SUBJECTS.map(s => {
         const active   = selected.includes(s.id)
         const disabled = !active && selected.length >= 2
@@ -184,17 +186,21 @@ function SubjectChips({ selected, onChange }: { selected: string[]; onChange: (s
             onClick={() => toggle(s.id)}
             disabled={disabled}
             style={{
-              padding: '7px 12px', borderRadius: 10, fontSize: 12, fontWeight: 600,
+              padding: '8px 14px', borderRadius: 999, fontSize: 12, fontWeight: 600,
               cursor: disabled ? 'not-allowed' : 'pointer',
-              transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 5,
-              background: active ? 'rgba(79,135,255,0.14)' : 'rgba(255,255,255,0.04)',
-              border: active ? '1px solid rgba(79,135,255,0.5)' : '1px solid rgba(255,255,255,0.1)',
-              color: active ? '#4F87FF' : 'var(--text-3)',
+              transition: 'all 0.2s cubic-bezier(0.34,1.56,0.64,1)',
+              display: 'flex', alignItems: 'center', gap: 6,
+              background: active ? s.bg : 'var(--bg-input)',
+              border: `1.5px solid ${active ? s.border : 'var(--border)'}`,
+              color: active ? s.color : 'var(--text-3)',
               opacity: disabled ? 0.35 : 1,
+              transform: active ? 'scale(1.04)' : 'scale(1)',
+              boxShadow: active ? `0 0 14px ${s.bg}` : 'none',
             }}
           >
-            <span>{s.icon}</span>
+            <span style={{ fontSize: 14 }}>{s.icon}</span>
             <span>{s.label}</span>
+            {active && <span style={{ fontSize: 10, fontWeight: 800, color: s.color }}>✓</span>}
           </button>
         )
       })}
@@ -214,6 +220,23 @@ export default function Register() {
   const [lastName,        setLastName]        = useState('')
   const [teacherSubjects, setTeacherSubjects] = useState<string[]>([])
 
+  // Parental consent state (students only)
+  const [dob,          setDob]          = useState('')        // YYYY-MM-DD
+  const [parentEmail,  setParentEmail]  = useState('')
+  const [parentEmailErr, setParentEmailErr] = useState('')
+
+  const calcAge = (dobStr: string): number => {
+    if (!dobStr) return 0
+    const today = new Date()
+    const birth = new Date(dobStr)
+    let age = today.getFullYear() - birth.getFullYear()
+    const m = today.getMonth() - birth.getMonth()
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--
+    return age
+  }
+  const age     = calcAge(dob)
+  const isAdult = dob ? age >= 18 : null   // null = not yet entered
+
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
     defaultValues: { role: Role.Student },
@@ -231,44 +254,76 @@ export default function Register() {
     }
   }, [firstName, lastName, isTeacher, setValue])
 
+  const gradeToBackend = (grade: Grade | undefined): string | undefined => {
+    if (grade == null) return undefined
+    return `GRADE_${grade}`
+  }
+
   const onSubmit = async (data: RegisterInput) => {
     if (isTeacher && !firstName.trim()) { setRegError('Ad daxil edin'); return }
     if (isTeacher && !lastName.trim())  { setRegError('Soyad daxil edin'); return }
+    // Students must enter DOB
+    if (data.role === Role.Student && !dob) {
+      setParentEmailErr('Doğum tarixini daxil edin')
+      return
+    }
+    // If minor, parent email required
+    if (data.role === Role.Student && isAdult === false) {
+      if (!parentEmail.trim() || !/\S+@\S+\.\S+/.test(parentEmail)) {
+        setParentEmailErr('Düzgün valideyn emaili daxil edin')
+        return
+      }
+    }
+    setParentEmailErr('')
     setLoading(true)
     setRegError('')
     try {
-      const cred = await firebaseRegister(data.email, data.password)
-      await updateUserProfile({ displayName: data.fullName })
-
-      const { password: _, phone: _phone, ...profileData } = data
-      const uniqueId = generateUniqueId(data.role)
-      await dbSaveProfile({
-        ...profileData,
-        ...(isTeacher && {
-          firstName: firstName.trim(),
-          lastName:  lastName.trim(),
-          subjects:  teacherSubjects,
-          status:    'pending',
-        }),
-        ...(data.role === Role.Student && {
-          foreignLang: data.foreignLang ?? 'english',
-        }),
-        ...(data.role === Role.Parent && { phone: data.phone || '' }),
-        uid:       cred.user.uid,
-        uniqueId,
-        createdAt: new Date().toISOString(),
-        balance:   0,
-        children:  [],
+      const res = await api.post<{ data: any }>('/api/auth/register', {
+        fullName:        data.fullName,
+        email:           data.email,
+        password:        data.password,
+        role:            data.role,
+        city:            data.city   || undefined,
+        school:          data.school || undefined,
+        grade:           gradeToBackend(data.grade as Grade | undefined),
+        foreignLanguage: data.foreignLang ? (data.foreignLang as string).toUpperCase() : undefined,
+        subjects:        teacherSubjects.length > 0
+          ? teacherSubjects.map(s => s.toUpperCase())
+          : undefined,
       })
+
+      const b = res.data.data
+      const { setToken, setUser, setBackendId } = useAuthStore.getState()
+      setToken(b.token, b.refreshToken)
+      if (b.id) setBackendId(b.id)
+      setUser({
+        id:             String(b.id ?? ''),
+        fullName:       b.fullName,
+        email:          b.email,
+        role:           b.role as Role,
+        uniqueId:       b.uniqueId,
+        emailVerified:  b.emailVerified,
+        createdAt:      new Date().toISOString(),
+        specialtyGroup: b.specialtyGroup ?? '',
+        plan:           'free',
+        streakDays:     0,
+        totalQuestions: 0,
+        successRate:    0,
+      } as any)
+
+      if (data.role === Role.Student && isAdult === false) {
+        await sendParentalConsentEmail({ parentEmail, studentName: data.fullName, studentAge: age }).catch(() => {})
+      }
 
       if (isTeacher) navigate('/teacher/pending')
       else if (data.role === Role.Parent) navigate('/onboarding/parent')
       else navigate('/onboarding/group')
     } catch (err: any) {
-      const code = err?.code ?? ''
-      if (code === 'auth/email-already-in-use') setRegError('Bu e-poçt artıq qeydiyyatdadır.')
-      else if (code === 'auth/weak-password')   setRegError('Şifrə çox zəifdir.')
-      else                                       setRegError('Qeydiyyat zamanı xəta baş verdi.')
+      const msg = err?.response?.data?.message ?? ''
+      if (msg.toLowerCase().includes('exist') || msg.toLowerCase().includes('already'))
+        setRegError('Bu e-poçt artıq qeydiyyatdadır.')
+      else
+        setRegError('Qeydiyyat zamanı xəta baş verdi.')
     } finally {
       setLoading(false)
     }
@@ -547,6 +602,81 @@ export default function Register() {
                       👨‍👩‍👧 Qeydiyyatdan sonra övladınızın ID-si ilə bağlantı sorğusu göndərəcəksiniz
                     </div>
                   </>
+                )}
+
+                {/* ── DOB + parental consent (students only) ── */}
+                {selectedRole === Role.Student && (
+                  <div style={{
+                    padding: '14px', borderRadius: 12,
+                    background: isAdult === true
+                      ? 'rgba(0,201,167,0.06)'
+                      : isAdult === false
+                        ? 'rgba(255,180,0,0.06)'
+                        : 'rgba(128,128,128,0.04)',
+                    border: `1px solid ${
+                      isAdult === true  ? 'rgba(0,201,167,0.35)' :
+                      isAdult === false ? 'rgba(255,180,0,0.35)' :
+                      'var(--border)'
+                    }`,
+                    transition: 'all 0.2s',
+                  }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-3)', marginBottom: 10 }}>
+                      Doğum tarixi <span style={{ color: 'var(--danger)' }}>*</span>
+                    </p>
+
+                    {/* Date of birth picker */}
+                    <input
+                      className="input"
+                      type="date"
+                      value={dob}
+                      max={new Date().toISOString().split('T')[0]}
+                      min="1990-01-01"
+                      onChange={e => { setDob(e.target.value); setParentEmailErr('') }}
+                      style={{ marginBottom: dob ? 10 : 0 }}
+                    />
+
+                    {/* Age badge — only shown for minors */}
+                    {dob && isAdult === false && (
+                      <div style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        padding: '4px 10px', borderRadius: 8, marginBottom: 10,
+                        background: 'rgba(255,180,0,0.12)',
+                        border: '1px solid rgba(255,180,0,0.3)',
+                      }}>
+                        <span style={{ fontSize: 13, fontWeight: 800, fontFamily: 'var(--font-mono)', color: '#F59E0B' }}>
+                          {age} yaş
+                        </span>
+                        <span style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                          — valideyn razılığı lazımdır
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Parent email — shown only when DOB entered and minor */}
+                    {dob && isAdult === false && (
+                      <div>
+                        <label className="label-sm" style={{ display: 'block', marginBottom: 6 }}>
+                          Valideyn e-poçtu <span style={{ color: 'var(--danger)' }}>*</span>
+                        </label>
+                        <input
+                          className="input"
+                          type="email"
+                          placeholder="valideyn@gmail.com"
+                          value={parentEmail}
+                          onChange={e => { setParentEmail(e.target.value); setParentEmailErr('') }}
+                          style={parentEmailErr ? { borderColor: 'var(--danger)' } : undefined}
+                        />
+                        {parentEmailErr && (
+                          <p style={{ marginTop: 4, fontSize: 11, color: 'var(--danger)' }}>{parentEmailErr}</p>
+                        )}
+                        <p style={{ marginTop: 6, fontSize: 11, color: 'var(--text-3)', lineHeight: 1.5 }}>
+                          Valideynin həm NIDA hesabına həm də e-poçtuna təsdiq mesajı göndəriləcək.
+                          Azərbaycan Respublikasının qanunvericiliyinə əsasən 18 yaşdan aşağı şəxslərin
+                          məlumatlarının toplanması üçün valideyn razılığı tələb olunur.
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 {regError && (

@@ -11,6 +11,7 @@ const Login           = lazy(() => import('../features/auth/pages/Login'))
 const Register        = lazy(() => import('../features/auth/pages/Register'))
 const EmailVerify     = lazy(() => import('../features/auth/pages/EmailVerify'))
 const ForgotPassword  = lazy(() => import('../features/auth/pages/ForgotPassword'))
+const ResetPassword   = lazy(() => import('../features/auth/pages/ResetPassword'))
 const DiagnosticTest     = lazy(() => import('../features/auth/pages/DiagnosticTest'))
 const GroupSelect        = lazy(() => import('../features/auth/pages/GroupSelect'))
 const TeacherOnboarding  = lazy(() => import('../features/auth/pages/TeacherOnboarding'))
@@ -72,6 +73,7 @@ export const router = createBrowserRouter(
     { path: '/register',          element: <Suspense fallback={null}><Register /></Suspense> },
     { path: '/verify',            element: <Suspense fallback={null}><EmailVerify /></Suspense> },
     { path: '/forgot-password',   element: <Suspense fallback={null}><ForgotPassword /></Suspense> },
+    { path: '/reset-password',    element: <Suspense fallback={null}><ResetPassword /></Suspense> },
     { path: '/onboarding/test',    element: <Suspense fallback={null}><DiagnosticTest /></Suspense> },
     { path: '/onboarding/group',   element: <Suspense fallback={null}><GroupSelect /></Suspense> },
     { path: '/onboarding/teacher', element: <Suspense fallback={null}><TeacherOnboarding /></Suspense> },

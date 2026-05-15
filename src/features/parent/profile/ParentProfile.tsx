@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/features/auth/store/authContext'
-import { dbSaveProfile } from '@/lib/db'
+import { apiUpdateProfile } from '@/lib/api'
 import toast from 'react-hot-toast'
 
 const SPRING = { type: 'spring', stiffness: 260, damping: 24 }
@@ -78,7 +78,7 @@ export default function ParentProfile() {
   const handleSave = async () => {
     setSaving(true)
     try {
-      await dbSaveProfile({ fullName: editName.trim(), phone: editPhone.trim() })
+      await apiUpdateProfile({ fullName: editName.trim(), phone: editPhone.trim() })
       toast.success('Profil yeniləndi')
     } catch {
       toast.error('Xəta baş verdi')

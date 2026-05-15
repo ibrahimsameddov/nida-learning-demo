@@ -2,10 +2,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/stores/authStore'
 import {
-  dbGetMyGroups, dbGetGroupStudentStats, dbGetResults,
-  dbGetTeacherInterventions, dbSaveIntervention,
-  dbActionIntervention, dbDismissIntervention,
-} from '@/lib/db'
+  apiGetMyGroups, apiGetGroup,
+  apiGetStudentStatistics, apiGetChildResults,
+} from '@/lib/api'
 import {
   detectInterventions, detectWeakTopics, analyzeActivityPatterns, computeGroupERI,
   type Intervention, type WeakTopic, type InactiveStudent,
@@ -26,50 +25,46 @@ export interface GroupInsights {
 
 export function useGroupInsights(groupId: string) {
   const teacherUid = useAuthStore(s => s.user?.id ?? '')
-  const qc         = useQueryClient()
 
   const query = useQuery({
     queryKey: ['group-insights', groupId],
     enabled:  !!groupId && !!teacherUid,
     staleTime: 5 * 60_000,
     queryFn: async () => {
-      const students = await dbGetGroupStudentStats(groupId)
-      if (!students.length) return null
+      const group = await apiGetGroup(groupId)
+      const studentIds: number[] = group?.studentIds ?? group?.studentUids ?? []
+      if (!studentIds.length) return null
 
-      // Fetch results for each student
+      const [statsArr, resultsArr] = await Promise.all([
+        Promise.all(studentIds.map((id: number) => apiGetStudentStatistics(id).catch(() => null))),
+        Promise.all(studentIds.map((id: number) => apiGetChildResults(id).catch(() => []))),
+      ])
+
+      // Normalise to the shape detectInterventions / computeGroupERI expect
+      const students = statsArr
+        .map((s, i) => s ? { ...s, uid: String(studentIds[i]), id: studentIds[i] } : null)
+        .filter(Boolean)
+
       const resultsMap: Record<string, any[]> = {}
-      await Promise.all(
-        students.map(async s => {
-          const r = await dbGetResults(s.uid).catch(() => [])
-          resultsMap[s.uid] = r as any[]
-        })
-      )
+      students.forEach((s, i) => { resultsMap[s.uid] = resultsArr[i] ?? [] })
 
       const studentNames: Record<string, string> = {}
-      students.forEach(s => { studentNames[s.uid] = s.name })
+      students.forEach(s => { studentNames[s.uid] = s.fullName ?? s.name ?? String(s.id) })
 
-      const interventions    = detectInterventions(students, resultsMap, teacherUid, groupId)
       const weakTopics       = detectWeakTopics(resultsMap, studentNames)
       const inactiveStudents = analyzeActivityPatterns(students)
-      const groupERI         = computeGroupERI(students.map(s => s.subjectStats))
+      const groupERI         = computeGroupERI(students.map(s => s.subjectStats ?? []))
 
-      // Persist new interventions
-      await Promise.all(interventions.map(i => dbSaveIntervention(i).catch(() => {})))
+      // Interventions not yet in backend — return empty
+      const interventions: Intervention[] = []
 
       return { interventions, weakTopics, inactiveStudents, groupERI }
     },
   })
 
-  const actionMutation = useMutation({
-    mutationFn: ({ id, actionType }: { id: string; actionType: string }) =>
-      dbActionIntervention(id, actionType),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['group-insights', groupId] }),
-  })
-
-  const dismissMutation = useMutation({
-    mutationFn: (id: string) => dbDismissIntervention(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['group-insights', groupId] }),
-  })
+  // Mutation stubs — interventions not yet in backend
+  const qc = useQueryClient()
+  const noopMutate = useMutation({ mutationFn: async () => {} })
 
   return {
     interventions:    query.data?.interventions    ?? [],
@@ -77,8 +72,8 @@ export function useGroupInsights(groupId: string) {
     inactiveStudents: query.data?.inactiveStudents ?? [],
     groupERI:         query.data?.groupERI         ?? 0,
     isLoading:        query.isLoading,
-    actionIntervention:   actionMutation.mutate,
-    dismissIntervention:  dismissMutation.mutate,
+    actionIntervention:  noopMutate.mutate,
+    dismissIntervention: noopMutate.mutate,
   }
 }
 
@@ -101,21 +96,22 @@ export function useAllGroupsOverview() {
     enabled:  !!teacherUid,
     staleTime: 10 * 60_000,
     queryFn: async () => {
-      const groups = await dbGetMyGroups()
+      const groups = await apiGetMyGroups()
       const summaries = await Promise.all(
         groups.map(async (g: any) => {
-          const students = await dbGetGroupStudentStats(g.id).catch(() => [])
-          const eri      = computeGroupERI(students.map((s: any) => s.subjectStats))
-          const pending  = await dbGetTeacherInterventions(teacherUid)
-            .then((list: any[]) => list.filter((i: any) => i.groupId === g.id).length)
-            .catch(() => 0)
+          const studentIds: number[] = g.studentIds ?? g.studentUids ?? []
+          const statsArr = await Promise.all(
+            studentIds.map((id: number) => apiGetStudentStatistics(id).catch(() => null))
+          )
+          const students = statsArr.filter(Boolean)
+          const eri = computeGroupERI(students.map((s: any) => s.subjectStats ?? []))
           return {
             id:           g.id,
             name:         g.name,
             subject:      g.subject,
-            studentCount: students.length,
+            studentCount: studentIds.length,
             groupERI:     eri,
-            pendingCount: pending,
+            pendingCount: 0, // interventions not yet in backend
           }
         })
       )
@@ -125,33 +121,15 @@ export function useAllGroupsOverview() {
 }
 
 // ── Saved Interventions ────────────────────────────────────────────────────────
+// Interventions not yet in backend — returns empty list
 
 export function useSavedInterventions() {
-  const teacherUid = useAuthStore(s => s.user?.id ?? '')
-  const qc         = useQueryClient()
-
-  const query = useQuery({
-    queryKey: ['saved-interventions', teacherUid],
-    enabled:  !!teacherUid,
-    staleTime: 60_000,
-    queryFn:  () => dbGetTeacherInterventions(teacherUid),
-  })
-
-  const action  = useMutation({
-    mutationFn: ({ id, actionType }: { id: string; actionType: string }) =>
-      dbActionIntervention(id, actionType),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['saved-interventions', teacherUid] }),
-  })
-
-  const dismiss = useMutation({
-    mutationFn: (id: string) => dbDismissIntervention(id),
-    onSuccess:  () => qc.invalidateQueries({ queryKey: ['saved-interventions', teacherUid] }),
-  })
+  const noopMutate = useMutation({ mutationFn: async () => {} })
 
   return {
-    interventions: (query.data ?? []) as Intervention[],
-    isLoading:     query.isLoading,
-    action:        action.mutate,
-    dismiss:       dismiss.mutate,
+    interventions: [] as Intervention[],
+    isLoading:     false,
+    action:        noopMutate.mutate,
+    dismiss:       noopMutate.mutate,
   }
 }

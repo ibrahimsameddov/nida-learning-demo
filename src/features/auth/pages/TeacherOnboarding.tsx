@@ -2,8 +2,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { dbSaveProfile } from '@/lib/db'
-import { apiCreateGroup } from '@/lib/api'
+import { apiCreateGroup, apiUpdateProfile } from '@/lib/api'
 
 const SUBJECTS = [
   { id: 'math',    icon: '📐', label: 'Riyaziyyat',         color: '#4F87FF' },
@@ -38,7 +37,7 @@ export default function TeacherOnboarding() {
       setSaving(true)
       try {
         const sub = selectedSubject?.label ?? ''
-        await dbSaveProfile({ subjectSpecialty: sub })
+        await apiUpdateProfile({ subjectSpecialty: sub })
       } catch { /* non-fatal */ } finally { setSaving(false) }
       setStep(1)
     } else if (step === 1) {

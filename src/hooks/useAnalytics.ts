@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { dbGetStats, dbGetResults } from '../lib/db'
+import { apiGetMyStatistics, apiGetMyResults } from '../lib/api'
+import type { FirestoreStats, FirestoreResult } from '../types/models'
 import {
   calculateERI,
   calculateDKIndex,
@@ -18,8 +19,8 @@ import type { ERIBreakdown, SpacedItem, LearningProfile, GraphNode, GraphEdge } 
 // ── Base data queries ─────────────────────────────────────────────────────────
 
 export function useStatsData() {
-  const statsQ   = useQuery({ queryKey: ['stats'],   queryFn: () => dbGetStats(),   staleTime: 60_000 })
-  const resultsQ = useQuery({ queryKey: ['results'], queryFn: () => dbGetResults(), staleTime: 60_000 })
+  const statsQ   = useQuery({ queryKey: ['stats'],   queryFn: () => apiGetMyStatistics() as unknown as Promise<FirestoreStats>,   staleTime: 60_000 })
+  const resultsQ = useQuery({ queryKey: ['results'], queryFn: () => apiGetMyResults()    as unknown as Promise<FirestoreResult[]>, staleTime: 60_000 })
   return {
     stats:     statsQ.data   ?? null,
     results:   resultsQ.data ?? [],
@@ -150,8 +151,6 @@ export function useCohortData() {
     [stats?.averagePercent, cohort],
   )
 
-  // Deterministic rank numbers from seed
-  const seed       = (stats?.averagePercent ?? 60) | 0
   const cityRank   = Math.max(1, Math.round(600 * (1 - percentile / 100)))
   const gradeRank  = Math.max(1, Math.round(cityRank * 0.4))
   const groupRank  = Math.max(1, Math.round(gradeRank * 0.2))

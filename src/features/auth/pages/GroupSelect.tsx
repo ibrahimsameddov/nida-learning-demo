@@ -1,6 +1,6 @@
 import { useState }     from 'react'
 import { useNavigate }  from 'react-router-dom'
-import { dbSaveProfile } from '../../../lib/db'
+import { apiUpdateProfile } from '../../../lib/api'
 import type { SpecialtyGroup } from '../../../types/examData'
 
 // ── Ixtisas qrupu data ────────────────────────────────────────────────────────
@@ -78,7 +78,7 @@ export default function GroupSelect() {
     if (!selected || loading) return
     setLoading(true)
     try {
-      await dbSaveProfile({ specialtyGroup: selected })
+      await apiUpdateProfile({ specialtyGroup: selected })
     } catch { /* silent — navigate anyway */ }
     setLoading(false)
     navigate('/')

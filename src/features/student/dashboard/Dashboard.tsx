@@ -5,7 +5,8 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate }                              from 'react-router-dom'
 import { useQuery }                      from '@tanstack/react-query'
 import { motion, AnimatePresence }       from 'framer-motion'
-import { ResponsiveGridLayout as RGLComponent, useContainerWidth } from 'react-grid-layout'
+import { ResponsiveGridLayout as _RGL, useContainerWidth } from 'react-grid-layout'
+const RGLComponent = _RGL as any
 import { useAuth }                       from '@/features/auth/store/authContext'
 import {
   apiGetMyStatistics,
@@ -710,7 +711,7 @@ function DashboardInner({
         draggableHandle=".bento-handle"
         isDraggable={editMode}
         isResizable={false}
-        onLayoutChange={onLayoutChange}
+        onLayoutChange={onLayoutChange as any}
         useCSSTransforms
       >
         <div key="hero"      style={{ overflow: 'hidden' }}>
@@ -759,5 +760,5 @@ export default function StudentDashboard() {
 
   if (statsLoading || resultsLoading) return <DashboardSkeleton />
 
-  return <DashboardInner stats={stats} results={results as FirestoreResult[]} userProfile={userProfile} />
+  return <DashboardInner stats={stats as unknown as FirestoreStats} results={results as unknown as FirestoreResult[]} userProfile={userProfile} />
 }
