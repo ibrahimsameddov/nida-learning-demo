@@ -594,14 +594,9 @@ export default function Register() {
                 )}
 
                 {selectedRole === Role.Parent && (
-                  <>
-                    <FormField label="Telefon nömrəsi">
-                      <input className="input" type="tel" placeholder="+994 50 000 00 00" {...register('phone')} />
-                    </FormField>
-                    <div style={{ padding: '10px 14px', borderRadius: 10, fontSize: 12, background: 'rgba(244,162,97,0.08)', border: '0.5px solid rgba(244,162,97,0.25)', color: '#F4A261', lineHeight: 1.55 }}>
-                      👨‍👩‍👧 Qeydiyyatdan sonra övladınızın ID-si ilə bağlantı sorğusu göndərəcəksiniz
-                    </div>
-                  </>
+                  <div style={{ padding: '10px 14px', borderRadius: 10, fontSize: 12, background: 'rgba(244,162,97,0.08)', border: '0.5px solid rgba(244,162,97,0.25)', color: '#F4A261', lineHeight: 1.55 }}>
+                    👨‍👩‍👧 Qeydiyyatdan sonra övladınızın ID-si ilə bağlantı sorğusu göndərəcəksiniz
+                  </div>
                 )}
 
                 {/* ── DOB + parental consent (students only) ── */}

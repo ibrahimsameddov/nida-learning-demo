@@ -8,7 +8,10 @@ export const loginSchema = z.object({
 
 export const registerSchema = z.object({
   fullName: z.string().min(3, 'Ad minimum 3 simvol').max(60),
-  email:    z.string().email('Email formatı yanlışdır'),
+  email:    z.string().email('Email formatı yanlışdır').refine(
+    e => e.toLowerCase().endsWith('@gmail.com'),
+    'Yalnız Gmail ünvanı (@gmail.com) qəbul edilir'
+  ),
   password: z
     .string()
     .min(8)
