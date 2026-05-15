@@ -5,6 +5,8 @@ import {
   signOut,
   updateProfile,
   onAuthStateChanged,
+  signInWithPopup,
+  GoogleAuthProvider,
   type User,
 } from 'firebase/auth'
 import { auth } from '../../../lib/firebaseConfig'
@@ -38,3 +40,7 @@ export const updateUserProfile = async (data: { displayName?: string; photoURL?:
 
 export const onFirebaseAuthChange = (cb: (user: User | null) => void) =>
   onAuthStateChanged(auth, cb)
+
+const googleProvider = new GoogleAuthProvider()
+googleProvider.setCustomParameters({ prompt: 'select_account' })
+export const signInWithGoogle = () => signInWithPopup(auth, googleProvider)
