@@ -4,6 +4,7 @@ import { useNavigate }             from 'react-router-dom'
 import { motion }                  from 'framer-motion'
 import { useAuth }                 from '@/features/auth/store/authContext'
 import { apiGetUserByUniqueId, apiGetChildStatistics, apiGetChildResults, apiGetParentRequests, apiSendParentRequest, apiGetUnreadReports, apiMarkReportRead } from '@/lib/api'
+import Mascot from '@/components/ui/Mascot'
 import { Sidebar }      from '@/components/layout/Sidebar'
 import { Topbar }       from '@/components/layout/GlassTopbar'
 import { BottomNav }    from '@/components/layout/BottomNav'
@@ -212,6 +213,11 @@ export default function ParentHome() {
             }}>
               <div style={{ position: 'absolute', top: 0, left: '8%', right: '8%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(201,149,43,0.4), transparent)' }} />
               <div style={{ position: 'absolute', top: -40, right: -40, width: 140, height: 140, borderRadius: '50%', background: 'rgba(236,72,153,0.06)', filter: 'blur(40px)', pointerEvents: 'none' }} />
+
+              {/* Mascot */}
+              <div style={{ position: 'absolute', right: -10, bottom: -10, zIndex: 1, pointerEvents: 'none' }}>
+                <Mascot role="parent" state="wave" size={130} />
+              </div>
 
               {/* Child info */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
