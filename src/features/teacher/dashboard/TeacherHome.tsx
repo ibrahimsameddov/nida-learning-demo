@@ -4,7 +4,6 @@ import { useNavigate }             from 'react-router-dom'
 import { motion }                  from 'framer-motion'
 import { useAuth }                 from '@/features/auth/store/authContext'
 import { apiGetMyGroups, apiGetTeacherHomeworks, apiGetMyExams, apiGetPendingInterventions, apiCreateWeeklyReport } from '@/lib/api'
-import Mascot from '@/components/ui/Mascot'
 import { Sidebar }   from '@/components/layout/Sidebar'
 import { Topbar }    from '@/components/layout/GlassTopbar'
 import { BottomNav } from '@/components/layout/BottomNav'
@@ -99,9 +98,6 @@ export default function TeacherHome() {
             }}>
               <div style={{ position: 'absolute', top: 0, left: '8%', right: '8%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(201,149,43,0.4), transparent)' }} />
               <div style={{ position: 'absolute', top: -40, right: -40, width: 160, height: 160, borderRadius: '50%', background: 'rgba(201,149,43,0.05)', filter: 'blur(40px)', pointerEvents: 'none' }} />
-              <div style={{ position: 'absolute', right: -10, bottom: -10, zIndex: 1, pointerEvents: 'none' }}>
-                <Mascot role="teacher" state="wave" size={130} />
-              </div>
 
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
                 <div>
